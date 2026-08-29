@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M170HY7SBA4R4N1XB4G13V41",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "experiments/deez-win/static/favicon.svg",
+    "experiments/deez-win/templates/layout.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 31424,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 282368,
+    "output_tokens": 3043,
+    "api_call_count": 13
+  }
+}
