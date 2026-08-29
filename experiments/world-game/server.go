@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"sort"
@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// sessionSource is whatever can resolve a request to a player identity:
-// the real D3BIT proxy, or the local dev stand-in.
+// sessionSource resolves a request to a player identity: the real D3BIT proxy,
+// or the local dev stand-in.
 type sessionSource interface {
 	Routes(mux *http.ServeMux)
 	User(r *http.Request) *D3bitUser
@@ -21,198 +21,228 @@ type sessionSource interface {
 type Server struct {
 	auth     sessionSource
 	d3bitURL string
+	origin   string
 	store    *Store
 	cala     *Cala
+}
+
+// sendMagicLink delegates to whichever auth backend is wired up.
+func (s *Server) sendMagicLink(ctx context.Context, email string) error {
+	sender, ok := s.auth.(interface {
+		SendMagicLink(context.Context, string, string) error
+	})
+	if !ok {
+		return errors.New("Sign-in is not available.")
+	}
+	if email == "" {
+		return errors.New("Enter an email first.")
+	}
+	return sender.SendMagicLink(ctx, email, s.origin+"/auth/callback")
 }
 
 func (s *Server) Routes(mux *http.ServeMux) {
 	s.auth.Routes(mux)
 
-	mux.HandleFunc("GET /api/config", s.handleConfig)
-	mux.HandleFunc("GET /api/rooms", s.handlePublicRooms)
-	mux.HandleFunc("POST /api/rooms", s.handleCreateRoom)
-	mux.HandleFunc("POST /api/rooms/{code}/join", s.handleJoin)
-	mux.HandleFunc("GET /api/rooms/{code}", s.handleRoomState)
-	mux.HandleFunc("POST /api/rooms/{code}/roll", s.handleRoll)
-	mux.HandleFunc("GET /api/rooms/{code}/topics", s.handleTopicSuggestions)
-	mux.HandleFunc("POST /api/rooms/{code}/topic", s.handlePickTopic)
-	mux.HandleFunc("POST /api/rooms/{code}/subtopic", s.handlePickSubTopic)
-	mux.HandleFunc("POST /api/rooms/{code}/answer", s.handleAnswer)
+	mux.HandleFunc("GET /{$}", s.handleHome)
+	mux.HandleFunc("GET /lobbies", s.handleLobbies)
+	mux.HandleFunc("POST /login", s.handleLogin)
+	mux.HandleFunc("POST /logout", s.handleLogout)
+	mux.HandleFunc("POST /rooms", s.handleCreateRoom)
+	mux.HandleFunc("POST /join", s.handleJoin)
+	mux.HandleFunc("GET /rooms/{code}", s.handleRoomPage)
+	mux.HandleFunc("GET /rooms/{code}/panel", s.handlePanel)
+	mux.HandleFunc("POST /rooms/{code}/roll", s.handleRoll)
+	mux.HandleFunc("POST /rooms/{code}/topic", s.handleTopic)
+	mux.HandleFunc("POST /rooms/{code}/subtopic", s.handleSubTopic)
+	mux.HandleFunc("POST /rooms/{code}/answer", s.handleAnswer)
 }
 
-// requireUser resolves the D3BIT session. The browser is expected to have
-// called POST /d3bit/auth/anon first, so an unauthenticated request here is a
-// client bug rather than a normal state.
-func (s *Server) requireUser(w http.ResponseWriter, r *http.Request) *D3bitUser {
-	u := s.auth.User(r)
-	if u == nil {
-		httpError(w, http.StatusUnauthorized, "unauthenticated", "No D3BIT session. Create one first.")
-		return nil
+// session guarantees a player identity, creating an anonymous one on the fly.
+// Nobody should ever meet a login wall just to look at the home page.
+func (s *Server) session(w http.ResponseWriter, r *http.Request) *D3bitUser {
+	if u := s.auth.User(r); u != nil {
+		return u
 	}
-	return u
+	if bootstrap, ok := s.auth.(interface {
+		Bootstrap(http.ResponseWriter, *http.Request) *D3bitUser
+	}); ok {
+		return bootstrap.Bootstrap(w, r)
+	}
+	return nil
 }
 
-func (s *Server) room(w http.ResponseWriter, r *http.Request) *Room {
-	room, err := s.store.Get(r.PathValue("code"))
-	if err != nil {
-		httpError(w, http.StatusNotFound, "room_not_found", "No room with that code.")
-		return nil
-	}
-	return room
+func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+	u := s.session(w, r)
+	render(w, http.StatusOK, homeTmpl, "layout", s.homeView(u, ""))
 }
 
-func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"cala_enabled": s.cala.Enabled(),
-		"d3bit_url":    s.d3bitURL,
-	})
-}
-
-func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
-	if u == nil {
-		return
-	}
-
-	var body struct {
-		Public    bool `json:"public"`
-		MaxPlayer int  `json:"max_players"`
-		Questions int  `json:"questions"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-
-	room := s.store.Create(body.Public, body.MaxPlayer, body.Questions)
-	if _, err := room.Join(u); err != nil {
-		httpError(w, http.StatusConflict, "join_failed", err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, s.view(room, u.ID))
-}
-
-func (s *Server) handlePublicRooms(w http.ResponseWriter, r *http.Request) {
+func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 	rooms := s.store.PublicRooms()
 	sort.Slice(rooms, func(i, j int) bool { return rooms[i].CreatedAt.After(rooms[j].CreatedAt) })
 
-	out := make([]map[string]any, 0, len(rooms))
+	lobbies := make([]lobbyView, 0, len(rooms))
 	for _, room := range rooms {
 		room.mu.Lock()
-		out = append(out, map[string]any{
-			"code":        room.Code,
-			"players":     len(room.Players),
-			"max_players": room.MaxPlayer,
-		})
+		lobbies = append(lobbies, lobbyView{Code: room.Code, Players: len(room.Players), MaxPlayers: room.MaxPlayer})
 		room.mu.Unlock()
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"rooms": out})
+
+	return homeView{
+		User:         u,
+		Lobbies:      lobbies,
+		PlayerCounts: []int{2, 3, 4},
+		GoogleURL:    s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
+		LoginMsg:     msg,
+	}
+}
+
+func (s *Server) handleLobbies(w http.ResponseWriter, r *http.Request) {
+	render(w, http.StatusOK, homeTmpl, "lobbies", s.homeView(s.auth.User(r), ""))
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	email := strings.TrimSpace(r.FormValue("email"))
+	msg := "Check your inbox for the sign-in link."
+	if err := s.sendMagicLink(r.Context(), email); err != nil {
+		msg = err.Error()
+	}
+	render(w, http.StatusOK, homeTmpl, "account", s.homeView(s.auth.User(r), msg))
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if lo, ok := s.auth.(interface {
+		Logout(http.ResponseWriter, *http.Request)
+	}); ok {
+		lo.Logout(w, r)
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
+	u := s.session(w, r)
+	if u == nil {
+		s.fail(w, r, "Could not start a session. Is D3BIT reachable?")
+		return
+	}
+	r.ParseForm()
+
+	room := s.store.Create(r.FormValue("public") == "1", atoi(r.FormValue("max_players"), 3), 8)
+	if _, err := room.Join(u); err != nil {
+		s.fail(w, r, err.Error())
+		return
+	}
+	http.Redirect(w, r, "/rooms/"+room.Code, http.StatusSeeOther)
 }
 
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
+	u := s.session(w, r)
 	if u == nil {
+		s.fail(w, r, "Could not start a session. Is D3BIT reachable?")
 		return
 	}
-	room := s.room(w, r)
-	if room == nil {
-		return
-	}
+	r.ParseForm()
 
-	if _, err := room.Join(u); err != nil {
-		status := http.StatusConflict
-		if err == ErrRoomFull {
-			status = http.StatusForbidden
-		}
-		httpError(w, status, "join_failed", err.Error())
+	room, err := s.store.Get(titleCode(r.FormValue("code")))
+	if err != nil {
+		s.fail(w, r, "No room with that code.")
 		return
 	}
-	writeJSON(w, http.StatusOK, s.view(room, u.ID))
+	if _, err := room.Join(u); err != nil {
+		msg := "Could not join that room."
+		switch err {
+		case ErrRoomFull:
+			msg = "That room is full."
+		case ErrBadPhase:
+			msg = "That game has already started."
+		}
+		s.fail(w, r, msg)
+		return
+	}
+	http.Redirect(w, r, "/rooms/"+room.Code, http.StatusSeeOther)
 }
 
-func (s *Server) handleRoomState(w http.ResponseWriter, r *http.Request) {
-	room := s.room(w, r)
-	if room == nil {
+// fail re-renders the home page with a message. htmx 4 swaps error responses by
+// default, so returning real HTML here means the user sees the problem in place.
+func (s *Server) fail(w http.ResponseWriter, r *http.Request, msg string) {
+	v := s.homeView(s.auth.User(r), "")
+	v.Error = msg
+	render(w, http.StatusUnprocessableEntity, homeTmpl, "layout", v)
+}
+
+func (s *Server) renderRoom(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
+	v := s.buildRoomView(room, me, flash)
+	v.Suggestions = s.suggestions(r.Context(), room)
+	render(w, http.StatusOK, roomTmpl, "layout", v)
+}
+
+func (s *Server) renderPanel(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
+	v := s.buildRoomView(room, me, flash)
+	v.Suggestions = s.suggestions(r.Context(), room)
+	render(w, http.StatusOK, panelTmpl, "panel", v)
+}
+
+func (s *Server) handleRoomPage(w http.ResponseWriter, r *http.Request) {
+	u := s.session(w, r)
+	room, err := s.store.Get(r.PathValue("code"))
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	me := ""
+	if u != nil {
+		me = u.ID
+		room.Join(u) // a link-follower joins if there is room; otherwise they spectate
+	}
+	s.renderRoom(w, r, room, me, "")
+}
+
+func (s *Server) handlePanel(w http.ResponseWriter, r *http.Request) {
+	room, err := s.store.Get(r.PathValue("code"))
+	if err != nil {
+		http.Error(w, "gone", http.StatusGone)
 		return
 	}
 	me := ""
 	if u := s.auth.User(r); u != nil {
 		me = u.ID
 	}
-	writeJSON(w, http.StatusOK, s.view(room, me))
+	s.renderPanel(w, r, room, me, "")
 }
 
 func (s *Server) handleRoll(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
-	if u == nil {
+	u, room, ok := s.actor(w, r)
+	if !ok {
 		return
 	}
-	room := s.room(w, r)
-	if room == nil {
-		return
-	}
+	flash := ""
 	if err := room.Roll(u.ID); err != nil {
-		httpError(w, http.StatusConflict, "roll_failed", err.Error())
-		return
+		flash = "Could not roll right now."
 	}
-	writeJSON(w, http.StatusOK, s.view(room, u.ID))
+	s.renderPanel(w, r, room, u.ID, flash)
 }
 
-// handleTopicSuggestions offers starting points for the first player.
-func (s *Server) handleTopicSuggestions(w http.ResponseWriter, r *http.Request) {
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if !s.cala.Enabled() {
-		writeJSON(w, http.StatusOK, map[string]any{"topics": OfflineTopicSuggestions(), "offline": true})
+func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
+	u, room, ok := s.actor(w, r)
+	if !ok {
 		return
 	}
-	if q == "" {
-		writeJSON(w, http.StatusOK, map[string]any{"topics": OfflineTopicSuggestions()})
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
-	defer cancel()
-
-	entities, err := s.cala.SearchEntities(ctx, q, 6)
-	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"topics": []string{q}, "degraded": true})
-		return
-	}
-	topics := make([]string, 0, len(entities))
-	for _, e := range entities {
-		topics = append(topics, e.Name)
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"topics": topics})
-}
-
-// handlePickTopic locks the overall topic and resolves the top five sub-topics
-// that the remaining players will claim.
-func (s *Server) handlePickTopic(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
-	if u == nil {
-		return
-	}
-	room := s.room(w, r)
-	if room == nil {
-		return
-	}
-
-	var body struct {
-		Topic string `json:"topic"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-	topic := strings.TrimSpace(body.Topic)
+	r.ParseForm()
+	topic := strings.TrimSpace(r.FormValue("topic"))
 	if topic == "" {
-		httpError(w, http.StatusBadRequest, "missing_topic", "Pick a topic first.")
+		s.renderPanel(w, r, room, u.ID, "Pick a topic first.")
 		return
 	}
 
 	room.mu.Lock()
-	if room.Phase != PhaseTopic {
+	switch {
+	case room.Phase != PhaseTopic:
 		room.mu.Unlock()
-		httpError(w, http.StatusConflict, "bad_phase", "The topic has already been chosen.")
+		s.renderPanel(w, r, room, u.ID, "The topic has already been chosen.")
 		return
-	}
-	if room.TopicPicker() != u.ID {
+	case room.TopicPicker() != u.ID:
 		room.mu.Unlock()
-		httpError(w, http.StatusForbidden, "not_your_turn", "The dice gave the topic pick to someone else.")
+		s.renderPanel(w, r, room, u.ID, "The dice gave the topic pick to someone else.")
 		return
 	}
 	room.Topic = topic
@@ -220,26 +250,160 @@ func (s *Server) handlePickTopic(w http.ResponseWriter, r *http.Request) {
 
 	subs := s.resolveSubTopics(r.Context(), room, topic)
 	if len(subs) == 0 {
-		httpError(w, http.StatusUnprocessableEntity, "no_data",
-			"Cala has nothing playable for that topic. Try another.")
+		room.mu.Lock()
+		room.Topic = ""
+		room.mu.Unlock()
+		s.renderPanel(w, r, room, u.ID, "Nothing playable for that topic. Try another.")
 		return
 	}
 
 	room.mu.Lock()
 	room.SubTopics = subs
 	room.Phase = PhaseSubTopics
-	// With two players there is no one left to claim an axis, so the topic
-	// picker's own choice stands and we go straight to building.
+	// With two players nobody follows the topic picker, so their own choice
+	// stands and the round builds immediately.
 	if room.NextSubTopicPicker() == "" {
 		room.SubTopics[0].ClaimedBy = u.ID
 		room.Phase = PhaseBuilding
 	}
+	building := room.Phase == PhaseBuilding
 	room.mu.Unlock()
 
-	if room.Phase == PhaseBuilding {
+	if building {
 		go s.startQuiz(room)
 	}
-	writeJSON(w, http.StatusOK, s.view(room, u.ID))
+	s.renderPanel(w, r, room, u.ID, "")
+}
+
+func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
+	u, room, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	r.ParseForm()
+	key := r.FormValue("key")
+
+	room.mu.Lock()
+	if room.Phase != PhaseSubTopics {
+		room.mu.Unlock()
+		s.renderPanel(w, r, room, u.ID, "")
+		return
+	}
+	if room.NextSubTopicPicker() != u.ID {
+		room.mu.Unlock()
+		s.renderPanel(w, r, room, u.ID, "Wait for your turn.")
+		return
+	}
+
+	claimed := false
+	for i := range room.SubTopics {
+		if room.SubTopics[i].Key != key || room.SubTopics[i].ClaimedBy != "" {
+			continue
+		}
+		room.SubTopics[i].ClaimedBy = u.ID
+		if p := room.find(u.ID); p != nil {
+			p.SubTopic = key
+		}
+		claimed = true
+		break
+	}
+	if !claimed {
+		room.mu.Unlock()
+		s.renderPanel(w, r, room, u.ID, "Someone just took that one.")
+		return
+	}
+
+	building := room.NextSubTopicPicker() == ""
+	if building {
+		room.Phase = PhaseBuilding
+	}
+	room.mu.Unlock()
+
+	if building {
+		go s.startQuiz(room)
+	}
+	s.renderPanel(w, r, room, u.ID, "")
+}
+
+func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
+	u, room, ok := s.actor(w, r)
+	if !ok {
+		return
+	}
+	r.ParseForm()
+	index := atoi(r.FormValue("index"), -1)
+	choice := atoi(r.FormValue("choice"), -1)
+
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	if room.Phase != PhaseQuiz || index != room.Current || room.Current >= len(room.Questions) {
+		v := s.roomViewLocked(room, u.ID, "")
+		render(w, http.StatusOK, panelTmpl, "panel", v)
+		return
+	}
+	me := room.find(u.ID)
+	if me == nil || me.answered[index] {
+		v := s.roomViewLocked(room, u.ID, "")
+		render(w, http.StatusOK, panelTmpl, "panel", v)
+		return
+	}
+
+	q := room.Questions[room.Current]
+	correct := choice == q.Answer
+	elapsed := int(time.Since(room.questionAt).Milliseconds())
+
+	points := 0
+	if correct {
+		// Speed matters, but never more than being right: 100 base, up to 50
+		// more for answering inside the first ten seconds.
+		points = 100
+		if bonus := 50 - elapsed/200; bonus > 0 {
+			points += bonus
+		}
+		// You seeded this axis, so you get less for knowing it.
+		if q.SeededBy == u.ID {
+			points /= 2
+		}
+	}
+	me.Score += points
+	me.answered[index] = true
+	q.Answers = append(q.Answers, Answer{PlayerID: u.ID, Choice: choice, Correct: correct, Points: points, Elapsed: elapsed})
+
+	// Render this player's result before advancing, so they see the answer.
+	v := s.roomViewLocked(room, u.ID, "")
+
+	if len(q.Answers) >= len(room.Players) {
+		if room.Current+1 >= len(room.Questions) {
+			room.Phase = PhaseResults
+		} else {
+			room.Current++
+			room.questionAt = time.Now()
+		}
+	}
+	render(w, http.StatusOK, panelTmpl, "panel", v)
+}
+
+// actor resolves the (player, room) pair every game action needs.
+func (s *Server) actor(w http.ResponseWriter, r *http.Request) (*D3bitUser, *Room, bool) {
+	u := s.auth.User(r)
+	if u == nil {
+		s.fail(w, r, "Your session expired. Start again.")
+		return nil, nil, false
+	}
+	room, err := s.store.Get(r.PathValue("code"))
+	if err != nil {
+		s.fail(w, r, "That room is gone.")
+		return nil, nil, false
+	}
+	return u, room, true
+}
+
+func (s *Server) suggestions(ctx context.Context, room *Room) []string {
+	if room.Phase != PhaseTopic {
+		return nil
+	}
+	return OfflineTopicSuggestions()
 }
 
 func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string) []SubTopic {
@@ -260,77 +424,14 @@ func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string)
 	if err != nil {
 		return offlineSubTopics(topic)
 	}
-	subs := SubTopics(in, 5)
-	if len(subs) == 0 {
-		return offlineSubTopics(topic)
+	if subs := SubTopics(in, 5); len(subs) > 0 {
+		return subs
 	}
-	return subs
+	return offlineSubTopics(topic)
 }
 
-func (s *Server) handlePickSubTopic(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
-	if u == nil {
-		return
-	}
-	room := s.room(w, r)
-	if room == nil {
-		return
-	}
-
-	var body struct {
-		Key string `json:"key"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-
-	room.mu.Lock()
-	if room.Phase != PhaseSubTopics {
-		room.mu.Unlock()
-		httpError(w, http.StatusConflict, "bad_phase", "Not picking sub-topics right now.")
-		return
-	}
-	if room.NextSubTopicPicker() != u.ID {
-		room.mu.Unlock()
-		httpError(w, http.StatusForbidden, "not_your_turn", "Wait for your turn.")
-		return
-	}
-
-	claimed := false
-	for i := range room.SubTopics {
-		if room.SubTopics[i].Key != body.Key {
-			continue
-		}
-		if room.SubTopics[i].ClaimedBy != "" {
-			room.mu.Unlock()
-			httpError(w, http.StatusConflict, "taken", "Someone just took that one.")
-			return
-		}
-		room.SubTopics[i].ClaimedBy = u.ID
-		if p := room.find(u.ID); p != nil {
-			p.SubTopic = body.Key
-		}
-		claimed = true
-		break
-	}
-	if !claimed {
-		room.mu.Unlock()
-		httpError(w, http.StatusBadRequest, "unknown_subtopic", "That sub-topic is not on the board.")
-		return
-	}
-
-	done := room.NextSubTopicPicker() == ""
-	if done {
-		room.Phase = PhaseBuilding
-	}
-	room.mu.Unlock()
-
-	if done {
-		go s.startQuiz(room)
-	}
-	writeJSON(w, http.StatusOK, s.view(room, u.ID))
-}
-
-// startQuiz builds the questions off the request path so the picking player
-// isn't left waiting on Cala; the room polls its way into the quiz phase.
+// startQuiz builds questions off the request path so the picking player is not
+// left waiting on Cala; the room polls its way into the quiz phase.
 func (s *Server) startQuiz(room *Room) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -346,163 +447,16 @@ func (s *Server) startQuiz(room *Room) {
 		return
 	}
 	room.Questions = qs
+	room.QuestionCount = len(qs) // the built count, not the requested one
 	room.Current = 0
 	room.questionAt = time.Now()
 	room.Phase = PhaseQuiz
 }
 
-func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
-	u := s.requireUser(w, r)
-	if u == nil {
-		return
-	}
-	room := s.room(w, r)
-	if room == nil {
-		return
-	}
-
-	var body struct {
-		Index  int `json:"index"`
-		Choice int `json:"choice"`
-	}
-	json.NewDecoder(r.Body).Decode(&body)
-
-	room.mu.Lock()
-	defer room.mu.Unlock()
-
-	if room.Phase != PhaseQuiz {
-		httpError(w, http.StatusConflict, "bad_phase", "No question is live.")
-		return
-	}
-	if body.Index != room.Current || room.Current >= len(room.Questions) {
-		httpError(w, http.StatusConflict, "stale_answer", "That question has moved on.")
-		return
-	}
-	me := room.find(u.ID)
-	if me == nil {
-		httpError(w, http.StatusForbidden, "not_in_room", "You are not in this room.")
-		return
-	}
-	if me.answered[body.Index] {
-		writeJSON(w, http.StatusOK, s.viewLocked(room, u.ID))
-		return
-	}
-
-	q := room.Questions[room.Current]
-	correct := body.Choice == q.Answer
-	elapsed := int(time.Since(room.questionAt).Milliseconds())
-
-	points := 0
-	if correct {
-		// Speed matters, but never more than being right: 100 base, up to 50
-		// more for answering inside the first ten seconds.
-		points = 100
-		if bonus := 50 - elapsed/200; bonus > 0 {
-			points += bonus
-		}
-		// You seeded this axis, so you get less for knowing it.
-		if q.SeededBy == u.ID {
-			points = points / 2
-		}
-	}
-	me.Score += points
-	me.answered[body.Index] = true
-	q.Answers = append(q.Answers, Answer{
-		PlayerID: u.ID, Choice: body.Choice, Correct: correct, Points: points, Elapsed: elapsed,
-	})
-
-	// Advance as soon as everyone has answered.
-	if len(q.Answers) >= len(room.Players) {
-		if room.Current+1 >= len(room.Questions) {
-			room.Phase = PhaseResults
-		} else {
-			room.Current++
-			room.questionAt = time.Now()
-		}
-	}
-	writeJSON(w, http.StatusOK, s.viewLocked(room, u.ID))
-}
-
-// view is the room as one player should see it.
-func (s *Server) view(room *Room, me string) map[string]any {
-	room.mu.Lock()
-	defer room.mu.Unlock()
-	return s.viewLocked(room, me)
-}
-
-// viewLocked builds the client payload. The correct answer is withheld until
-// the question is settled — the client is never trusted with it early.
-func (s *Server) viewLocked(room *Room, me string) map[string]any {
-	out := map[string]any{
-		"code":           room.Code,
-		"public":         room.Public,
-		"phase":          room.Phase,
-		"max_players":    room.MaxPlayer,
-		"players":        room.Players,
-		"order":          room.Order,
-		"topic":          room.Topic,
-		"sub_topics":     room.SubTopics,
-		"question_count": len(room.Questions),
-		"current":        room.Current,
-		"me":             me,
-		"error":          room.Error,
-		"topic_picker":   room.TopicPicker(),
-		"next_picker":    room.NextSubTopicPicker(),
-		"cala_enabled":   s.cala.Enabled(),
-	}
-
-	if room.Phase == PhaseQuiz && room.Current < len(room.Questions) {
-		q := room.Questions[room.Current]
-		answered := false
-		if p := room.find(me); p != nil {
-			answered = p.answered[q.Index]
-		}
-
-		payload := map[string]any{
-			"index":     q.Index,
-			"kind":      q.Kind,
-			"prompt":    q.Prompt,
-			"options":   q.Options,
-			"seeded_by": q.SeededBy,
-			"answered":  answered,
-			"waiting":   len(room.Players) - len(q.Answers),
-		}
-		// Only reveal the answer to a player who has already committed.
-		if answered {
-			payload["answer"] = q.Answer
-			payload["fact"] = q.Fact
-			payload["source"] = q.Source
-			payload["source_url"] = q.SourceURL
-		}
-		out["question"] = payload
-	}
-
-	if room.Phase == PhaseResults {
-		var review []map[string]any
-		for _, q := range room.Questions {
-			review = append(review, map[string]any{
-				"prompt": q.Prompt, "options": q.Options, "answer": q.Answer,
-				"fact": q.Fact, "source": q.Source, "source_url": q.SourceURL,
-			})
-		}
-		out["review"] = review
-	}
-	return out
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-func httpError(w http.ResponseWriter, status int, code, msg string) {
-	writeJSON(w, status, map[string]any{"error": map[string]string{"code": code, "message": msg}})
-}
-
 func urlQueryEscape(s string) string { return url.QueryEscape(s) }
 func urlPathEscape(s string) string  { return url.PathEscape(s) }
 func lower(s string) string          { return strings.ToLower(s) }
+
 func atoi(s string, def int) int {
 	if v, err := strconv.Atoi(s); err == nil {
 		return v

@@ -22,6 +22,7 @@ var staticFS embed.FS
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	d3bitURL := flag.String("d3bit", envOr("D3BIT_URL", "https://api.d3bit.com"), "D3BIT API base URL")
+	origin := flag.String("origin", "", "public origin for auth callbacks (default http://localhost<addr>)")
 	devAuth := flag.Bool("dev-auth", false, "use local stand-in sessions instead of D3BIT (local development only)")
 	flag.Parse()
 
@@ -35,9 +36,14 @@ func main() {
 		log.Printf("auth: d3bit %s", *d3bitURL)
 	}
 
+	if *origin == "" {
+		*origin = "http://localhost" + *addr
+	}
+
 	srv := &Server{
 		auth:     auth,
 		d3bitURL: *d3bitURL,
+		origin:   *origin,
 		store:    NewStore(),
 		cala:     cala,
 	}

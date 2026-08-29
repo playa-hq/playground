@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"sync"
 )
@@ -40,6 +42,10 @@ func (d *DevAuth) Routes(mux *http.ServeMux) {
 }
 
 func (d *DevAuth) anon(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"user": d.mint(w)}})
+}
+
+func (d *DevAuth) mint(w http.ResponseWriter) *D3bitUser {
 	d.mu.Lock()
 	d.seq++
 	u := &D3bitUser{
@@ -56,7 +62,17 @@ func (d *DevAuth) anon(w http.ResponseWriter, r *http.Request) {
 		Name: "d3_session", Value: token, Path: "/",
 		HttpOnly: true, MaxAge: 86400, SameSite: http.SameSiteLaxMode,
 	})
-	writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"user": u}})
+	return u
+}
+
+// Bootstrap mints a local session, matching the real Auth's contract.
+func (d *DevAuth) Bootstrap(w http.ResponseWriter, r *http.Request) *D3bitUser {
+	return d.mint(w)
+}
+
+// SendMagicLink is inert in dev mode; there is no mail path.
+func (d *DevAuth) SendMagicLink(ctx context.Context, email, redirect string) error {
+	return errors.New("Dev auth has no email sign-in. Point -d3bit at a real D3BIT instance.")
 }
 
 func (d *DevAuth) me(w http.ResponseWriter, r *http.Request) {
@@ -86,4 +102,9 @@ func (d *DevAuth) User(r *http.Request) *D3bitUser {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.sessions[c.Value]
+}
+
+// Logout clears the local session.
+func (d *DevAuth) Logout(w http.ResponseWriter, r *http.Request) {
+	d.logout(w, r)
 }

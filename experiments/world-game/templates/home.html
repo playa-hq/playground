@@ -1,0 +1,103 @@
+{{define "body"}}
+<div class="topbar">
+  <div>
+    <h1 class="title">WORLD GAME</h1>
+    <p class="subtitle">v0.1 — a quiz built from a verified entity graph</p>
+  </div>
+  <div class="row">
+    <button type="button" class="ghost small" data-mute>🔊</button>
+    {{with .User}}<span class="tag {{if not .IsAnon}}live{{end}}">{{.DisplayName}}{{if .IsAnon}} · guest{{end}}</span>{{end}}
+  </div>
+</div>
+
+{{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
+
+<div class="grid">
+  <div class="stack">
+    <div class="card stack">
+      <form method="post" action="/rooms" class="stack">
+        <div>
+          <label class="field">Players</label>
+          <!-- The stepper is three radios styled as a segmented control: no JS,
+               and the chosen value posts with the form like any other field. -->
+          <div class="stepper" role="radiogroup" aria-label="Number of players">
+            {{range $n := .PlayerCounts}}
+              <label class="seg">
+                <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
+                <span>{{$n}}</span>
+              </label>
+            {{end}}
+            <span class="muted small">dice decide who picks the topic</span>
+          </div>
+        </div>
+        <div class="row wrap">
+          <button class="primary" name="public" value="0">Create a lobby</button>
+          <button name="public" value="1">Create public lobby</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card stack">
+      <label class="field">Join game</label>
+      <form method="post" action="/join" class="row">
+        <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
+               autocomplete="off" required pattern="[A-Za-z0-9]{4}">
+        <button>Join</button>
+      </form>
+    </div>
+
+    <!-- Polled on its own so a lobby appearing elsewhere shows up here without
+         touching the rest of the page. -->
+    <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
+      {{template "lobbies" .}}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card" id="account">{{template "account" .}}</div>
+    <div class="card">
+      <label class="field">How it works</label>
+      <ol class="small muted tight">
+        <li>Everyone rolls. Highest picks the topic.</li>
+        <li>The rest each claim one of the top 5 sub-topics.</li>
+        <li>Questions come from those axes — with sources.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<p class="footer">CALA DATA &amp; SHOWCASED BY FAL.AI</p>
+{{end}}
+
+{{define "lobbies"}}
+<label class="field">Or public lobbies</label>
+{{if .Lobbies}}
+  {{range .Lobbies}}
+    <div class="lobby-item">
+      <span class="pixel small">{{.Code}}</span>
+      <span class="muted small">{{.Players}}/{{.MaxPlayers}} players</span>
+      <form method="post" action="/join"><input type="hidden" name="code" value="{{.Code}}"><button>Join</button></form>
+    </div>
+  {{end}}
+{{else}}
+  <p class="muted small tight">No public lobbies right now. Create one and it shows up here.</p>
+{{end}}
+{{end}}
+
+{{define "account"}}
+<label class="field">Account</label>
+{{if and .User (not .User.IsAnon)}}
+  <p class="small">Signed in as <strong>{{or .User.Email .User.DisplayName}}</strong>.</p>
+  <form method="post" action="/logout"><button class="ghost">Log out</button></form>
+{{else}}
+  <p class="small muted">Playing as a guest. Sign in to keep your score.</p>
+  <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
+    <input type="email" name="email" placeholder="you@example.com" class="plain" required>
+    <div class="row wrap">
+      <button>Email link</button>
+      <a class="btn" href="{{.GoogleURL}}">Google</a>
+    </div>
+  </form>
+  {{with .LoginMsg}}<p class="small muted">{{.}}</p>{{end}}
+{{end}}
+{{end}}

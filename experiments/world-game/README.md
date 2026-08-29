@@ -54,6 +54,32 @@ lobby → rolling → topic → subtopics → building → quiz → results
 - **Every answer shows its source** — the fact and its citation, which is the
   informative half of the game.
 
+## Architecture
+
+**Fully server-rendered Go, with htmx 4.0 for the interactivity.** There is no
+client-side state and no build step: `html/template` renders every screen, and
+the browser holds nothing but the DOM htmx last swapped in.
+
+Three htmx 4 specifics the code depends on:
+
+- **`innerMorph` swaps.** The panel re-renders every second; morphing means the
+  dice keep their animation and the topic input keeps focus and cursor position
+  through the poll. With `innerHTML` this design would be unusable.
+- **`hx-target:inherited`.** Inheritance is opt-in in htmx 4, so the target is
+  declared once on `#panel` and every button inside it inherits — and a stray
+  `hx-get` elsewhere on the page can't hijack the swap.
+- **Errors swap by default.** 4xx/5xx responses are swapped in 4.0, so the
+  server returns real HTML for failures and they render in place.
+
+One thing that changed under us: **htmx 4 does not read response headers**
+(`HX-Push-Url`, `HX-Redirect` and friends are gone — only request headers
+remain). Entering a room is therefore a plain form POST with a `303` redirect,
+which is better anyway: the URL is correct, refresh works, and it degrades to a
+working app with JavaScript switched off.
+
+The one JS file, `static/sfx.js`, only listens for `htmx:after:swap` and makes
+noises. It is not load-bearing.
+
 ## Run it
 
 ```bash
@@ -93,13 +119,19 @@ socket and costs no reconnect logic. Revisit only if a round feels laggy.
 **No database.** Rooms are ephemeral and in-memory. Persistence is the first
 thing to add when the leaderboard needs to outlive the process.
 
-**No build step on the frontend.** Plain HTML/CSS/JS so anyone on the team can
-edit it at 2am without a toolchain in the way. Migrate to Vue when it hurts.
+**No build step, no client framework.** Templates live next to the handlers that
+render them, so a change is one file and one reload. Codraw's Vue setup is the
+house style; this deliberately isn't, because at 2am a toolchain is a liability.
 
 ## Known gaps
 
-- **The UI has not been checked in a browser** — it was built and the API was
-  tested, but nobody has looked at it yet. Do that first.
+- **The UI has not been checked in a browser.** The full game loop is verified
+  end to end over HTTP, and every htmx attribute used was checked against the
+  htmx 4.0 source rather than the docs — but no human or headless browser has
+  actually rendered a frame. Do that first.
+- **`htmx.org@4.0.0` is not the npm `latest` tag yet** (that still points at
+  2.0.10), so the version in the CDN URL is pinned deliberately. Don't "fix" it
+  to a range.
 - **`POST /auth/anon` is 500ing on production D3BIT** as of 2026-08-29. `--dev`
   works around it; a local D3BIT may not have the problem.
 - Numeric phrasing is naive: "higher founded year" should read "founded later",

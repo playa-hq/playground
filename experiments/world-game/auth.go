@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -145,6 +148,62 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, next, http.StatusSeeOther)
 }
 
+// Bootstrap mints an anonymous D3BIT account and plants the session cookie on
+// this origin. Called server-side on first page view so a player never sees a
+// login wall — they get a name and a colour and start playing.
+func (a *Auth) Bootstrap(w http.ResponseWriter, r *http.Request) *D3bitUser {
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, a.baseURL+"/auth/anon", nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var env struct {
+		Data struct {
+			User D3bitUser `json:"user"`
+		} `json:"data"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&env) != nil || env.Data.User.ID == "" {
+		return nil
+	}
+	for _, c := range resp.Cookies() {
+		if c.Name == "d3_session" {
+			http.SetCookie(w, &http.Cookie{
+				Name: c.Name, Value: c.Value, Path: "/",
+				HttpOnly: true, MaxAge: 30 * 24 * 60 * 60, SameSite: http.SameSiteLaxMode,
+			})
+			// Cache under the new token so the very next call resolves.
+			a.mu.Lock()
+			a.cache[c.Value] = &cachedUser{user: &env.Data.User, expiresAt: time.Now().Add(60 * time.Second)}
+			a.mu.Unlock()
+		}
+	}
+	return &env.Data.User
+}
+
+// SendMagicLink asks D3BIT to email a sign-in link back to our callback.
+func (a *Auth) SendMagicLink(ctx context.Context, email, redirect string) error {
+	body, _ := json.Marshal(map[string]string{"email": email, "redirect": redirect})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/auth/login", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.New("D3BIT is not reachable right now.")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Could not send the sign-in link.")
+	}
+	return nil
+}
+
 // User resolves the caller's D3BIT profile, or nil when unauthenticated.
 func (a *Auth) User(r *http.Request) *D3bitUser {
 	c, err := r.Cookie("d3_session")
@@ -203,4 +262,19 @@ func rewriteCookie(setCookie string) string {
 		}
 	}
 	return strings.Join(out, "; ")
+}
+
+// Logout clears the session upstream and on this origin.
+func (a *Auth) Logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie("d3_session"); err == nil {
+		req, _ := http.NewRequestWithContext(r.Context(), http.MethodPost, a.baseURL+"/auth/logout", nil)
+		req.AddCookie(c)
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			resp.Body.Close()
+		}
+		a.mu.Lock()
+		delete(a.cache, c.Value)
+		a.mu.Unlock()
+	}
+	http.SetCookie(w, &http.Cookie{Name: "d3_session", Value: "", Path: "/", MaxAge: -1})
 }

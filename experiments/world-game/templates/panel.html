@@ -1,0 +1,155 @@
+{{define "panel"}}
+<!-- The roster rides along out of band so one poll updates scores too. -->
+<div id="roster" hx-swap-oob="innerMorph">{{template "roster" .}}</div>
+
+{{if .Room.Error}}<div class="banner danger">{{.Room.Error}}</div>{{end}}
+{{with .Flash}}<div class="banner danger">{{.}}</div>{{end}}
+
+{{if eq .Room.Phase "lobby"}}
+  <div class="card stack" data-sfx-phase="lobby">
+    <h2 class="pixel h2">Waiting for players</h2>
+    <p class="muted small">Share the code <strong class="pixel">{{.Room.Code}}</strong> — the game starts on its own when the room fills.</p>
+    <div class="progress"><i style="width:{{.FillPct}}%"></i></div>
+  </div>
+
+{{else if eq .Room.Phase "rolling"}}
+  <div class="card" data-sfx-phase="rolling">
+    <h2 class="pixel h2">Rolling for order</h2>
+    <p class="muted small">Highest roll picks the overall topic.</p>
+    <div class="dice-wrap">
+      {{range .Room.Players}}
+        <div>
+          {{template "die" .}}
+          <div class="die-label">{{.DisplayName}}</div>
+        </div>
+      {{end}}
+    </div>
+    {{if not .IHaveRolled}}
+      <!-- The dice are theatre, not a decision: fire once, after a beat, so the
+           animation is seen. `load delay:` means no JS is needed for it. -->
+      <div hx-post="/rooms/{{.Room.Code}}/roll" hx-trigger="load delay:900ms"></div>
+    {{end}}
+  </div>
+
+{{else if eq .Room.Phase "topic"}}
+  {{if .IsTopicPicker}}
+    <div class="card stack" data-sfx-phase="topic">
+      <h2 class="pixel h2">You won the roll</h2>
+      <p class="muted small">Pick the overall topic. Everyone else claims a sub-topic from it.</p>
+      <form hx-post="/rooms/{{.Room.Code}}/topic" class="stack">
+        <input type="text" name="topic" class="plain" placeholder="cities, fintechs, space…" autocomplete="off" required>
+        <div class="row wrap">
+          {{range .Suggestions}}
+            <button class="ghost small" name="topic" value="{{.}}">{{.}}</button>
+          {{end}}
+        </div>
+        <button class="primary">Lock it in</button>
+      </form>
+    </div>
+  {{else}}
+    <div class="card">
+      <h2 class="pixel h2">Topic</h2>
+      <p class="muted">{{.PickerName}} won the roll and is choosing the topic…</p>
+    </div>
+  {{end}}
+
+{{else if eq .Room.Phase "subtopics"}}
+  <div class="card stack" data-sfx-phase="subtopics">
+    <h2 class="pixel h2">Sub-topics</h2>
+    <p class="muted small">
+      {{if .IsMyPick}}Your pick — claim one axis.{{else}}Waiting for {{.PickerName}}…{{end}}
+      These are the top 5 things the graph actually holds for <strong>{{.Room.Topic}}</strong>.
+    </p>
+    <div class="stack">
+      {{range .SubTopics}}
+        <button class="subtopic{{if .ClaimedBy}} claimed{{end}}"
+                hx-post="/rooms/{{$.Room.Code}}/subtopic"
+                hx-vals='{"key":"{{.Key}}"}'
+                {{if or (not $.IsMyPick) .ClaimedBy}}disabled{{end}}>
+          <strong>{{.Label}}</strong>
+          <span class="small muted">{{.Kind}}{{with .OwnerName}} · taken by {{.}}{{end}}</span>
+        </button>
+      {{end}}
+    </div>
+  </div>
+
+{{else if eq .Room.Phase "building"}}
+  <div class="card" data-sfx-phase="building">
+    <h2 class="pixel h2">Building the round…</h2>
+    <p class="muted small">Pulling verified facts for <strong>{{.Room.Topic}}</strong>.</p>
+    <div class="progress indeterminate"><i></i></div>
+  </div>
+
+{{else if eq .Room.Phase "quiz"}}
+  {{with .Question}}
+    <div class="card" data-sfx-phase="quiz" data-question="{{.Index}}"
+         {{if .Answered}}data-sfx="{{if .WasCorrect}}correct{{else}}wrong{{end}}"{{end}}>
+      <div class="row spread small muted">
+        <span>Question {{.Number}} / {{$.Room.QuestionCount}}</span>
+        {{if .Seeded}}<span class="tag warn">your axis · half points</span>{{end}}
+      </div>
+      <div class="progress"><i style="width:{{.Pct}}%"></i></div>
+      <p class="prompt">{{.Prompt}}</p>
+      <div class="choices">
+        {{range .Choices}}
+          <button class="choice {{.Class}}"
+                  hx-post="/rooms/{{$.Room.Code}}/answer"
+                  hx-vals='{"index":"{{$.Question.Index}}","choice":"{{.Index}}"}'
+                  {{if $.Question.Answered}}disabled{{end}}>
+            <span class="key">{{.Letter}}</span> {{.Text}}
+          </button>
+        {{end}}
+      </div>
+      {{if .Answered}}
+        <div class="fact">
+          <div class="small">{{.Fact}}</div>
+          {{with .Source}}
+            <div class="small muted src">Source:
+              {{if $.Question.SourceURL}}<a href="{{$.Question.SourceURL}}" target="_blank" rel="noopener">{{.}}</a>{{else}}{{.}}{{end}}
+            </div>
+          {{end}}
+        </div>
+        <p class="small muted waiting">
+          {{if gt .Waiting 0}}Waiting for {{.Waiting}} more player{{if ne .Waiting 1}}s{{end}}…{{else}}Next question…{{end}}
+        </p>
+      {{end}}
+    </div>
+  {{end}}
+
+{{else if eq .Room.Phase "results"}}
+  <div class="card stack" data-sfx-phase="results">
+    <h2 class="pixel h2">Final</h2>
+    {{range $i, $p := .Ranked}}
+      <div class="player">
+        <span class="pixel rank">{{inc $i}}</span>
+        <span class="dot" style="background:{{$p.Color}}"></span>
+        <span class="name">{{$p.DisplayName}}</span>
+        <span class="score">{{$p.Score}}</span>
+      </div>
+    {{end}}
+    <a class="btn primary" href="/">Play again</a>
+  </div>
+  {{if .Review}}
+    <div class="card">
+      <label class="field">What you learned</label>
+      {{range .Review}}
+        <div class="review">
+          <div class="small">{{.Prompt}} → <strong>{{.Answer}}</strong></div>
+          {{with .Fact}}<div class="small muted">{{.}}</div>{{end}}
+          {{with .Source}}
+            <div class="small muted">Source:
+              {{if $.HasURLs}}<a href="{{.}}" target="_blank" rel="noopener">{{.}}</a>{{else}}{{.}}{{end}}
+            </div>
+          {{end}}
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+{{end}}
+{{end}}
+
+{{define "die"}}
+<div class="die {{if eq .Roll 0}}rolling{{else}}settled{{end}}">
+  {{range pips .Roll}}{{if .}}<span class="pip"></span>{{else}}<span></span>{{end}}{{end}}
+</div>
+{{end}}

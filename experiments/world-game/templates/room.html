@@ -1,0 +1,54 @@
+{{define "body"}}
+<div class="topbar">
+  <div>
+    <h1 class="title">{{.Room.Code}}</h1>
+    <p class="subtitle">{{or .Room.Topic "no topic yet"}} · {{len .Room.Players}}/{{.Room.MaxPlayer}} players
+      {{if not .CalaEnabled}}<span class="tag warn">offline data</span>{{end}}</p>
+  </div>
+  <div class="row">
+    <button type="button" class="ghost small" data-mute>🔊</button>
+    <a class="btn ghost small" href="/">Leave</a>
+  </div>
+</div>
+
+<div class="grid">
+  <!--
+    One polled region for the whole game.
+
+    hx-target:inherited is the htmx 4 way to say "everything inside me swaps
+    here". In 2.x this was implicit; now it is opt-in, which means the buttons
+    below need no target of their own and a stray hx-get can't hijack the page.
+
+    innerMorph rather than innerHTML: morphing keeps the dice mid-animation and
+    keeps focus in the topic input while the poll runs underneath.
+  -->
+  <div id="panel" class="stack"
+       hx-get="/rooms/{{.Room.Code}}/panel"
+       hx-trigger="every 1s"
+       hx-target="this"
+       hx-swap="innerMorph"
+       hx-target:inherited="#panel"
+       hx-swap:inherited="innerMorph">
+    {{template "panel" .}}
+  </div>
+
+  <div class="stack">
+    <div id="roster" class="card">{{template "roster" .}}</div>
+  </div>
+</div>
+
+<p class="footer">CALA DATA &amp; SHOWCASED BY FAL.AI</p>
+{{end}}
+
+{{define "roster"}}
+<label class="field">Players</label>
+{{range .Room.Players}}
+  <div class="player">
+    <span class="dot" style="background:{{.Color}}"></span>
+    <span class="name">{{.DisplayName}}{{if eq .ID $.Me}} <span class="muted small">(you)</span>{{end}}</span>
+    {{if eq .ID $.Picking}}<span class="tag live">picking</span>{{end}}
+    {{if .IsHost}}<span class="tag">host</span>{{end}}
+    <span class="score">{{.Score}}</span>
+  </div>
+{{end}}
+{{end}}
