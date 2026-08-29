@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M16V23YHZ1SM7QQ7G1QY7PYA",
+  "strategy": "manual-commit",
+  "branch": "cala-live",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "docs/decisions.md",
+    "experiments/deez-win/README.md",
+    "experiments/deez-win/c1",
+    "experiments/deez-win/c2",
+    "experiments/deez-win/c3",
+    "experiments/deez-win/cala.go",
+    "experiments/deez-win/cala_test.go",
+    "experiments/deez-win/game.go",
+    "experiments/deez-win/pipeline.go",
+    "experiments/deez-win/probe.go",
+    "experiments/deez-win/questions.go",
+    "experiments/deez-win/render.go",
+    "experiments/deez-win/server.go",
+    "experiments/deez-win/static/app.css",
+    "experiments/deez-win/templates/panel.html",
+    "experiments/deez-win/templates/room.html",
+    "experiments/deez-win/topic.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1004,
+    "cache_creation_tokens": 34647,
+    "cache_read_tokens": 2720856,
+    "output_tokens": 28479,
+    "api_call_count": 13
+  }
+}
