@@ -93,9 +93,11 @@ type Room struct {
 	// Order holds player ids sorted by dice roll, highest first.
 	Order []string `json:"order"`
 
-	Topic       string     `json:"topic"`
-	TopicEntity string     `json:"topic_entity,omitempty"`
-	SubTopics   []SubTopic `json:"sub_topics"`
+	Topic       string `json:"topic"`
+	TopicEntity string `json:"topic_entity,omitempty"`
+	// Cover is a transparent PNG illustrating the topic, from fal.ai.
+	Cover     string     `json:"cover,omitempty"`
+	SubTopics []SubTopic `json:"sub_topics"`
 
 	// graph is what Cala resolved for Topic; nil in offline mode.
 	graph *TopicGraph

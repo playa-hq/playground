@@ -10,6 +10,7 @@
   </div>
   <div class="row">
     <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
+    {{with .User}}<span class="who static"><span class="dot" style="background:{{.Color}}"></span>{{.DisplayName}}</span>{{end}}
     <a class="btn ghost small" href="/">Leave</a>
   </div>
 </div>
@@ -74,6 +75,7 @@
 {{with .Room.Topic}}
   <div class="topic-strip">
     <label class="field">Topic</label>
+    {{with $.Room.Cover}}<img class="cover" src="{{.}}" alt="" width="512" height="512">{{end}}
     <div class="pixel topic-name">{{.}}</div>
     {{if $.Entities}}
       <div class="chips">{{range $.Entities}}<span class="chip">{{.}}</span>{{end}}</div>

@@ -1,6 +1,14 @@
 {{define "body"}}
 <div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
 
+<div class="topbar home-top">
+  <span></span>
+  <div class="row">
+    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
+    <div id="account">{{template "account" .}}</div>
+  </div>
+</div>
+
 <section class="hero-big">
   <!-- One span per letter: each springs in on its own beat and boops on hover. -->
   <h1 class="wordmark" aria-label="deez.win">
@@ -12,4 +20,30 @@
   </form>
 </section>
 <script src="/home.js"></script>
+{{end}}
+
+{{define "account"}}
+{{if and .User (not .User.IsAnon)}}
+  <!-- <details> is the menu: no JS, closes on outside click via the summary. -->
+  <details class="menu">
+    <summary class="who"><span class="dot" style="background:{{.User.Color}}"></span>{{.User.DisplayName}}</summary>
+    <div class="pop">
+      <p class="small muted">{{or .User.Email .User.DisplayName}}</p>
+      <form method="post" action="/logout"><button class="ghost small">Log out</button></form>
+    </div>
+  </details>
+{{else}}
+  <details class="menu">
+    <summary class="who guest">{{with .User}}<span class="dot" style="background:{{.Color}}"></span>{{.DisplayName}} · {{end}}sign in</summary>
+    <div class="pop">
+      <p class="small muted">Keep your score on the board.</p>
+      <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
+        <input type="email" name="email" placeholder="you@example.com" class="plain" required>
+        <button class="primary">Email me a link</button>
+      </form>
+      <a class="btn google" href="{{.GoogleURL}}"><span class="g" aria-hidden="true">G</span> Continue with Google</a>
+      {{with .LoginMsg}}<p class="small muted">{{.}}</p>{{end}}
+    </div>
+  </details>
+{{end}}
 {{end}}

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,8 @@ type Server struct {
 	origin   string
 	store    *Store
 	cala     *Cala
+	fal      *Fal
+	covers   sync.Map // topic → cover url
 	board    *Leaderboard
 }
 
@@ -198,6 +201,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, msg string) {
 func (s *Server) renderRoom(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
 	v := s.buildRoomView(room, me, flash)
 	v.FullPage = true
+	v.User = s.auth.User(r)
 	v.Suggestions = s.suggestions(r.Context(), room)
 	render(w, http.StatusOK, roomTmpl, "layout", v)
 }
@@ -279,6 +283,7 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 	room.Phase = PhaseBuilding
 	room.Status = "Resolving “" + topic + "” to real entities…"
 	room.Loads = nil
+	room.Cover = ""
 	room.mu.Unlock()
 
 	go s.resolveTopicAsync(room, u.ID, topic)
@@ -290,11 +295,14 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	defer cancel()
 
 	room.progress("topic", "Topic → entities", StepRunning, "asking the graph", 0, 0)
-	// Cover art has a slot in the graph so the round's shape is visible;
-	// the fal model is not chosen yet, so it never starts.
-	room.progress("cover", "Cover art · fal", StepPending, "model not chosen yet", 0, 0)
+	if s.fal.Enabled() {
+		room.progress("cover", "Cover art · fal", StepPending, "waiting for entities", 0, 0)
+	} else {
+		room.progress("cover", "Cover art · fal", StepPending, "no FAL_KEY", 0, 0)
+	}
 
 	subs := s.resolveSubTopics(ctx, room, topic)
+	go s.illustrate(room, topic)
 
 	room.mu.Lock()
 	if room.Phase != PhaseBuilding || room.Topic != topic {
@@ -330,6 +338,55 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	if building {
 		s.startQuiz(room)
 	}
+}
+
+// illustrate renders the topic's cover in the background and hangs it on
+// the room. Cached per topic, like the graph, so a demo topic costs one
+// generation all evening.
+func (s *Server) illustrate(room *Room, topic string) {
+	if !s.fal.Enabled() {
+		return
+	}
+	key := strings.ToLower(strings.TrimSpace(topic))
+	if url, ok := s.covers.Load(key); ok {
+		room.mu.Lock()
+		room.Cover = url.(string)
+		room.mu.Unlock()
+		room.progress("cover", "", StepDone, "cached", 0, 0)
+		return
+	}
+
+	// The graph's entities make the prompt concrete: "Big Tech" is vague,
+	// "Big Tech: Apple, Microsoft, NVIDIA" draws something.
+	subject := topic
+	room.mu.Lock()
+	if g := room.graph; g != nil && len(g.Entities) > 0 {
+		var names []string
+		for i, e := range g.Entities {
+			if i == 3 {
+				break
+			}
+			names = append(names, e.Name)
+		}
+		subject = topic + " (" + strings.Join(names, ", ") + ")"
+	}
+	room.mu.Unlock()
+
+	room.progress("cover", "", StepRunning, "flux → cut-out", 0, 0)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	start := time.Now()
+	url, err := s.fal.Illustrate(ctx, subject)
+	if err != nil {
+		log.Printf("fal: cover for %q: %v", topic, err)
+		room.progress("cover", "", StepFailed, "fal did not answer", 0, 0)
+		return
+	}
+	s.covers.Store(key, url)
+	room.mu.Lock()
+	room.Cover = url
+	room.mu.Unlock()
+	room.progress("cover", "", StepDone, fmt.Sprintf("transparent png in %s", time.Since(start).Round(time.Second)), 0, 0)
 }
 
 // prefetchValues pulls every ranked axis for every entity as soon as the

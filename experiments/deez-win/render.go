@@ -112,6 +112,7 @@ type reviewView struct {
 type roomView struct {
 	Room        *Room
 	Me          string
+	User        *D3bitUser // the viewer, for the top bar
 	CalaEnabled bool
 	Flash       string
 	FullPage    bool // the whole room page, not a poll: no out-of-band roster

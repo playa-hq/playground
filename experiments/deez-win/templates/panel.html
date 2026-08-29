@@ -93,6 +93,7 @@
     <span class="eyebrow">Building</span>
     <h2 class="pixel h2">Reading the graph</h2>
     <p class="muted">{{or .Room.Status "Working…"}}{{if not .Entities}} <span class="small">This can take a minute the first time a topic is asked.</span>{{end}}</p>
+    {{with .Room.Cover}}<img class="cover big-cover" src="{{.}}" alt="" width="512" height="512">{{end}}
     {{if .Entities}}
       <div class="chips ticking">{{range $i, $e := .Entities}}<span class="chip" style="--i:{{$i}}">{{$e}}</span>{{end}}</div>
     {{end}}
