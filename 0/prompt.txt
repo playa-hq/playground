@@ -1,0 +1,6 @@
+could not reach checkpoint remote appeared again on one call and not the next. Same intermittent blip as before — the push succeeded regardless. Cosmetic so far, but if it starts failing consistently rather than warning, that's a real signal.
+wdym, i want to see it pushed the entire things / data
+
+---
+
+I want my teammates to be able to contribute nicely with entire and such; is telling them to pull and read readme.md enough? should we make a mini prompt thats able to understand the decisions or they should just prompt into new branches then merge them
