@@ -111,6 +111,7 @@
       <!-- Keyed by index so the morph replaces it and the bonus drain restarts. -->
       <div class="bonus" id="bonus-{{.Index}}" title="speed bonus"><i class="{{if .Answered}}stopped{{end}}"></i></div>
       <p class="prompt">{{.Prompt}}</p>
+      {{with .ImageURL}}<img class="question-image" src="{{.}}" alt="" referrerpolicy="no-referrer">{{end}}
       <div class="choices">
         {{range .Choices}}
           <button class="choice {{.Class}}"

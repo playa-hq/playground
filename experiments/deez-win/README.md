@@ -156,6 +156,13 @@ screen. Two models, chained synchronously over `fal.run`:
 2. `fal-ai/birefnet` — segmentation cut-out to RGBA. If it fails, the white
    image is used rather than nothing.
 
+The first two questions of a round also get a picture (`fal-ai/flux-2-pro`,
+landscape): generated off the quiz-start path, so the round begins at once
+and the pictures land on the questions as they finish. The prompt is built
+from the topic's objects and the axis theme ("founding history") — never the
+options, since a picture that favoured one would be a hint, and names come
+back as text and logos anyway. Served from `/covers/q-<room>-<n>.jpg`.
+
 Covers are cached per topic for the process lifetime. The step shows in the
 loading graph as *Cover art · fal*. Needs `FAL_KEY` (`./ops/set-secret
 FAL_KEY`); without it the step reads "no FAL_KEY" and the game is unchanged.

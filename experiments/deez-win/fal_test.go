@@ -76,3 +76,16 @@ func TestCoverObjects(t *testing.T) {
 		}
 	}
 }
+
+func TestQuestionPromptNamesNoEntities(t *testing.T) {
+	q := &Question{Prompt: "Which was founded first?", Options: []string{"Stripe", "Adyen"}}
+	got := questionPrompt(coverObjects("Spanish fintech startups", nil), neutralQuestionTheme(q))
+	for _, banned := range []string{"Stripe", "Adyen", "Spanish", "fintech startups"} {
+		if strings.Contains(got, banned) {
+			t.Errorf("prompt must not carry %q: %s", banned, got)
+		}
+	}
+	if !strings.Contains(got, "founding history") || !strings.Contains(got, "a leather wallet") {
+		t.Errorf("prompt lost the theme or objects: %s", got)
+	}
+}

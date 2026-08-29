@@ -358,16 +358,75 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	}
 }
 
-// handleCover serves a generated cover from memory. Immutable once made.
+// servedImage is a generated picture the app serves itself (CSP is
+// img-src 'self', and fal's CDN urls are not forever).
+type servedImage struct {
+	ctype string
+	data  []byte
+}
+
+// handleCover serves a generated image from memory. Immutable once made.
 func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
-	png, ok := s.coverPNG.Load(r.URL.Path)
+	v, ok := s.coverPNG.Load(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
+	img := v.(servedImage)
+	w.Header().Set("Content-Type", img.ctype)
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
-	w.Write(png.([]byte))
+	w.Write(img.data)
+}
+
+// questionImages illustrates the first n questions of a round. Each is
+// independent; a failure only costs that question its picture.
+func (s *Server) questionImages(room *Room, qs []*Question, n int) {
+	if n > len(qs) {
+		n = len(qs)
+	}
+	room.mu.Lock()
+	topic, code := room.Topic, room.Code
+	room.mu.Unlock()
+	objects := coverObjects(topic, nil)
+
+	room.progress("images", "Question art · fal", StepRunning, "", 0, n)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	done, failed := 0, 0
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int, q *Question) {
+			defer wg.Done()
+			u, err := s.fal.QuestionImage(ctx, objects, neutralQuestionTheme(q))
+			var data []byte
+			if err == nil {
+				data, err = s.fal.Fetch(ctx, u)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				log.Printf("fal: question %d image: %v", i+1, err)
+				failed++
+			} else {
+				path := fmt.Sprintf("/covers/q-%s-%d.jpg", coverSlug(strings.ToLower(code)), i)
+				s.coverPNG.Store(path, servedImage{ctype: "image/jpeg", data: data})
+				room.mu.Lock()
+				q.ImageURL = path
+				room.mu.Unlock()
+				done++
+			}
+			room.progress("images", "", StepRunning, fmt.Sprintf("%d/%d", done+failed, n), done+failed, n)
+		}(i, qs[i])
+	}
+	wg.Wait()
+	state := StepDone
+	if done == 0 {
+		state = StepFailed
+	}
+	room.progress("images", "", state, fmt.Sprintf("%d of %d drawn", done, n), done, n)
 }
 
 // coverSlug makes a topic key safe for a path.
@@ -434,7 +493,7 @@ func (s *Server) illustrate(room *Room, topic string) {
 		return
 	}
 	path := "/covers/" + coverSlug(key) + ".png"
-	s.coverPNG.Store(path, png)
+	s.coverPNG.Store(path, servedImage{ctype: "image/png", data: png})
 	s.covers.Store(key, path)
 	room.mu.Lock()
 	room.Cover = path
@@ -674,6 +733,11 @@ func (s *Server) startQuiz(room *Room) {
 
 	room.progress("questions", "Questions", StepRunning, "", 0, 0)
 	qs, err := s.buildQuestions(ctx, room)
+	if err == nil && len(qs) > 0 && s.fal.Enabled() {
+		// Off the critical path: the quiz starts now and the pictures land
+		// on the questions as they finish; the 1s poll shows them.
+		go s.questionImages(room, qs, 2)
+	}
 	if err != nil || len(qs) == 0 {
 		room.progress("questions", "", StepFailed, "no grounded questions", 0, 0)
 	} else {
