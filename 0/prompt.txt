@@ -1,0 +1,5 @@
+i want to make the points as ''aura'' and ''larp'' , example, whenever someone gains points it is called 'aura' and when someone loses points its called 'larp', also fix the whole page better, make the design nicer, i dont like the dice on the homepage, it is so huge and loooks bad, also it doesnt roll smoothly. Maybe it would be cool for all the buttons to wiggle  just like on the homepage button, push to main
+
+---
+
+on the homepage, change these texts: ''A data-backed party game'' - this is so ai and doesnt make any sense, ''6 SIDES'' - remove it, ''Roll for the order. Pick a world. Prove what you know.''- change it to smth more fun and simpler, not so ai. On homepage ''Play'' button remove the arrow. On homepage there are '' IMAGES & SOUND BY FAL.AI'' and '' DATA BY CALA'' make them more visible
