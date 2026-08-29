@@ -1,0 +1,13 @@
+stay agent agnostic in this repo when developing (dont mention we're using Claude into git files / co-authoring)
+
+we're doing a hackathon and we've built a team playa. we don't have a specific project name yet but we'd like a playground we can work on mini mvps before going all into smth. 
+
+we will be using the hackatons sponsors for our project:
+
+- Entire.io: install its CLI and set it up
+- Fal.ai, we installed the genmedia.sh cli
+- aikido: just the repo checking vulnerability tool
+
+- i want you to write a nice readme.md file explaining all that (we're in Tech Europe: hackathon in BCN)
+
+(its sponsored by all these & openai, I don't want claude/codex co authored commits please)
