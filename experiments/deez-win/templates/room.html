@@ -1,7 +1,15 @@
 {{define "body"}}
 <div class="topbar">
-  <div>
-    <h1 class="title">{{.Room.Code}}</h1>
+  <div class="brand-block">
+    <a class="brand-lockup" href="/" aria-label="deez.win home">
+      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
+        <path d="M8 15.5 22 7l14 8.5v15L22 38 8 30.5Z" />
+        <path d="m13.5 18.75 8.5 5 8.5-5M22 23.75V34" />
+        <circle cx="22" cy="14.5" r="2.5" />
+      </svg>
+      <span class="brand-wordmark">deez<span>.win</span></span>
+    </a>
+    <h1 class="room-code">{{.Room.Code}}</h1>
     <p class="subtitle">{{or .Room.Topic "no topic yet"}} · {{len .Room.Players}}/{{.Room.MaxPlayer}} players
       {{if not .CalaEnabled}}<span class="tag warn">offline data</span>{{end}}</p>
   </div>
