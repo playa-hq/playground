@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"image"
+	_ "image/png"
 	"strings"
 	"testing"
 )
@@ -34,6 +36,48 @@ func TestHomeHasOnlyPlayAction(t *testing.T) {
 	}
 	if !strings.Contains(html, `action="/play"`) || !strings.Contains(html, ">Play</span>") {
 		t.Fatal("home Play action does not lead to the lobby page")
+	}
+	if !strings.Contains(html, `/dice-d6.png`) || !strings.Contains(html, "6 SIDES") || strings.Contains(html, "d12") {
+		t.Fatal("home does not use the six-sided die identity")
+	}
+}
+
+func TestSixSidedDiceAssets(t *testing.T) {
+	for path, wantSize := range map[string]int{
+		"static/favicon.png": 128,
+		"static/dice-d6.png": 720,
+	} {
+		f, err := staticFS.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		config, _, err := image.DecodeConfig(f)
+		f.Close()
+		if err != nil {
+			t.Fatalf("decode %s: %v", path, err)
+		}
+		if config.Width != wantSize || config.Height != wantSize {
+			t.Errorf("%s is %dx%d, want %dx%d", path, config.Width, config.Height, wantSize, wantSize)
+		}
+	}
+}
+
+func TestSharedDarkThemeIncludesMobileLayout(t *testing.T) {
+	css, err := staticFS.ReadFile("static/app.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	styles := string(css)
+	for _, want := range []string{
+		"--bg: #07080A",
+		"--panel: #101216",
+		"--accent: #72F1C6",
+		"@media (max-width: 560px)",
+		"min-height: 44px",
+	} {
+		if !strings.Contains(styles, want) {
+			t.Errorf("shared theme is missing %q", want)
+		}
 	}
 }
 

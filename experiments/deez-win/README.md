@@ -206,15 +206,16 @@ cannot wait on an inference round-trip, and this way a round costs nothing.
 
 ## The look
 
-The landing page is the wordmark and a monochrome 3D d12: DEEZ.WIN as big as
+The landing page is the wordmark and a monochrome 3D d6: DEEZ.WIN as big as
 the container allows, one span per letter so each springs in on its own beat
 and boops on hover. Its single Play button leans toward the cursor and opens
 the lobby screen. Creating, joining, sound and account controls all live on
 that next screen, so the front door stays focused even as the game changes.
 
-An arcade cabinet that prints receipts. Press Start 2P for anything the
-cabinet says (codes, scores, headers), JetBrains Mono for anything a person
-reads. Mint means live/correct, gold means points, and the **receipt** — the
+An arcade cabinet that prints receipts. Every page uses the same near-black
+field and charcoal surfaces. Excalifont handles the cabinet hierarchy
+(codes, scores, headers), DM Mono anything a person reads. Mint
+means live/correct, amber means points, coral means error, and the **receipt** — the
 answer reveal and the end-of-round review — is the one paper-coloured thing on
 screen, because the proof should look different from the play. A ten-second
 gold bar drains at the same rate the server pays the speed bonus; keys 1–4
