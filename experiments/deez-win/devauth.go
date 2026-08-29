@@ -58,9 +58,15 @@ func (d *DevAuth) mint(w http.ResponseWriter) *D3bitUser {
 	d.sessions[token] = u
 	d.mu.Unlock()
 
+	// Dev auth is local-only, so Secure is always false. If X-Forwarded-Proto
+	// is present, respect it for consistency with production Auth behavior.
 	http.SetCookie(w, &http.Cookie{
-		Name: "d3_session", Value: token, Path: "/",
-		HttpOnly: true, MaxAge: 86400, SameSite: http.SameSiteLaxMode,
+		Name:     "d3_session",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   86400,
+		SameSite: http.SameSiteLaxMode,
 	})
 	return u
 }
