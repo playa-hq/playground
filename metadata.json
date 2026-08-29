@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M16Z5YWDQ9P76KPVRP0SR422",
+  "strategy": "manual-commit",
+  "branch": "fal-auth",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "docs/decisions.md",
+    "experiments/deez-win/README.md",
+    "experiments/deez-win/fal.go",
+    "experiments/deez-win/fal_test.go",
+    "experiments/deez-win/game.go",
+    "experiments/deez-win/main.go",
+    "experiments/deez-win/ops/set-cala-key",
+    "experiments/deez-win/ops/set-secret",
+    "experiments/deez-win/render.go",
+    "experiments/deez-win/server.go",
+    "experiments/deez-win/static/app.css",
+    "experiments/deez-win/templates/home.html",
+    "experiments/deez-win/templates/panel.html",
+    "experiments/deez-win/templates/room.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 967,
+    "cache_creation_tokens": 32007,
+    "cache_read_tokens": 3817453,
+    "output_tokens": 20182,
+    "api_call_count": 14
+  }
+}
