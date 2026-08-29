@@ -1,5 +1,1 @@
-Make a nice homepage, keep the ''Play'' button but remove other buttons, after clicking ''Play'' you get sent to the page where you can create a lobby from now on, also make the favicon a different kind of dice, make it just black and white and 3d, push to main
-
----
-
 when creating a lobby also make an option of how many questions you want in the game, make options of 5, 10, 15 questions , push to main
