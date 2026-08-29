@@ -21,4 +21,4 @@ Rules of the room:
 
 | Experiment | Started | Status | Verdict |
 |---|---|---|---|
-| _(add rows as you go)_ | | | |
+| [world-game](world-game/) | 2026-08-29 | iteration 0 | playable end to end; UI unreviewed |
