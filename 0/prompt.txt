@@ -1,5 +1,1 @@
-make the favicon 6-sided, refresh the design on every single page,all pages need to be same color, make the pages all b lack with few colored accents,  make it mobile friendly, push it to main
-
----
-
 Make the receipt as a roll, no a paper that just got printed, fix it, also when i am creating a lobby and i press '' leave'' dont throw me back to homepage, just back to the pege where i can create the lobby  push to main
