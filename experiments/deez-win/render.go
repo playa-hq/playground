@@ -68,6 +68,7 @@ type homeView struct {
 	MyRank       int
 	Lobbies      []lobbyView
 	PlayerCounts []int
+	Letters      []string // the wordmark, one span per letter
 	GoogleURL    string
 	Error        string
 	LoginMsg     string

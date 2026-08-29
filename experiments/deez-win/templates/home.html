@@ -1,6 +1,8 @@
 {{define "body"}}
-<div class="topbar">
-  <a class="brand" href="/"><span class="brand-die" aria-hidden="true"></span>DEEZ.WIN</a>
+<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="topbar home-top">
+  <span></span>
   <div class="row">
     <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
     {{with .User}}<span class="tag {{if not .IsAnon}}live{{end}}">{{.DisplayName}}{{if .IsAnon}} · guest{{end}}</span>{{end}}
@@ -9,70 +11,48 @@
 
 {{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
 
-<section class="hero">
-  <h1 class="pixel hero-title">Every answer<br>has a <em>receipt</em>.</h1>
-  <p class="hero-sub">A 2–4 player quiz that never asks a model what is true. Dice pick who chooses the topic;
-    the questions are read straight off Cala's verified entity graph, source attached.</p>
+<section class="hero-big">
+  <!-- One span per letter: each springs in on its own beat and boops on hover. -->
+  <h1 class="wordmark" aria-label="deez.win">
+    {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
+  </h1>
+  <div class="sparkles" aria-hidden="true"></div>
+  <p class="hero-line">2–4 players · dice decide · answers with receipts</p>
+
+  <form method="post" action="/rooms" class="play-strip">
+    <div class="stepper" role="radiogroup" aria-label="Number of players">
+      {{range $n := .PlayerCounts}}
+        <label class="seg">
+          <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
+          <span>{{$n}}</span>
+        </label>
+      {{end}}
+    </div>
+    <button class="primary big magnet" name="public" value="0"><span>Play</span></button>
+    <button class="ghost" name="public" value="1">Public lobby</button>
+  </form>
+
+  <form method="post" action="/join" class="join-strip">
+    <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
+           autocomplete="off" required pattern="[A-Za-z0-9]{4}" aria-label="Room code">
+    <button>Join</button>
+  </form>
 </section>
 
-<div class="grid">
-  <div class="stack">
-    <div class="card stack hero-card">
-      <form method="post" action="/rooms" class="stack">
-        <div>
-          <label class="field">Players</label>
-          <!-- The stepper is three radios styled as a segmented control: no JS,
-               and the chosen value posts with the form like any other field. -->
-          <div class="stepper" role="radiogroup" aria-label="Number of players">
-            {{range $n := .PlayerCounts}}
-              <label class="seg">
-                <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
-                <span>{{$n}}</span>
-              </label>
-            {{end}}
-            <span class="muted small">dice decide who picks the topic</span>
-          </div>
-        </div>
-        <div class="row wrap">
-          <button class="primary big" name="public" value="0">Create a lobby</button>
-          <button name="public" value="1">Make it public</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="card stack">
-      <label class="field">Join with a code</label>
-      <form method="post" action="/join" class="row">
-        <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
-               autocomplete="off" required pattern="[A-Za-z0-9]{4}">
-        <button>Join</button>
-      </form>
-    </div>
-
-    <!-- Polled on its own so a lobby appearing elsewhere shows up here without
-         touching the rest of the page. -->
-    <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
-      {{template "lobbies" .}}
-    </div>
+<div class="grid3">
+  <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
+    {{template "leaderboard" .}}
   </div>
-
-  <div class="stack">
-    <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
-      {{template "leaderboard" .}}
-    </div>
-    <div class="card" id="account">{{template "account" .}}</div>
-    <div class="card">
-      <label class="field">How a round goes</label>
-      <ol class="steps">
-        <li><b>Roll.</b> Highest die picks the topic.</li>
-        <li><b>Claim.</b> Everyone else takes one axis the graph holds for it.</li>
-        <li><b>Answer.</b> Fast and right scores most; your own axis pays half.</li>
-      </ol>
-    </div>
+  <!-- Polled on its own so a lobby appearing elsewhere shows up here without
+       touching the rest of the page. -->
+  <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
+    {{template "lobbies" .}}
   </div>
+  <div class="card" id="account">{{template "account" .}}</div>
 </div>
 
-<p class="footer">DATA BY CALA · SOUND BY FAL.AI · NO MODEL DECIDES WHAT IS TRUE</p>
+<p class="footer">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>
+<script src="/home.js"></script>
 {{end}}
 
 {{define "lobbies"}}
