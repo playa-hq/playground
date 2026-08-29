@@ -28,7 +28,8 @@ type Server struct {
 	store    *Store
 	cala     *Cala
 	fal      *Fal
-	covers   sync.Map // topic → cover url
+	covers   sync.Map // topic key → cover path
+	coverPNG sync.Map // cover path → png bytes
 	board    *Leaderboard
 }
 
@@ -57,6 +58,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /rooms", s.handleCreateRoom)
 	mux.HandleFunc("POST /join", s.handleJoin)
+	mux.HandleFunc("GET /covers/{file}", s.handleCover)
 	mux.HandleFunc("GET /rooms/{code}", s.handleRoomPage)
 	mux.HandleFunc("GET /rooms/{code}/panel", s.handlePanel)
 	mux.HandleFunc("POST /rooms/{code}/roll", s.handleRoll)
@@ -80,7 +82,7 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) *D3bitUser {
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	render(w, http.StatusOK, homeTmpl, "layout", homeView{Letters: strings.Split("DEEZ.WIN", "")})
+	render(w, http.StatusOK, homeTmpl, "layout", homeView{HasSfx: hasSfx, Letters: strings.Split("DEEZ.WIN", "")})
 }
 
 // handleLobby is the first point where a visitor needs a player identity: the
@@ -102,6 +104,7 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 	}
 
 	return homeView{
+		HasSfx:         hasSfx,
 		User:           u,
 		Top:            s.board.Top(10),
 		MyRank:         rankOf(s.board, u),
@@ -355,6 +358,32 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	}
 }
 
+// handleCover serves a generated cover from memory. Immutable once made.
+func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
+	png, ok := s.coverPNG.Load(r.URL.Path)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
+	w.Write(png.([]byte))
+}
+
+// coverSlug makes a topic key safe for a path.
+func coverSlug(key string) string {
+	var b strings.Builder
+	for _, c := range key {
+		switch {
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+			b.WriteRune(c)
+		default:
+			b.WriteByte('-')
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
 // illustrate renders the topic's cover in the background and hangs it on
 // the room. Cached per topic, like the graph, so a demo topic costs one
 // generation all evening.
@@ -398,9 +427,17 @@ func (s *Server) illustrate(room *Room, topic string) {
 		room.progress("cover", "", StepFailed, "fal did not answer", 0, 0)
 		return
 	}
-	s.covers.Store(key, url)
+	png, err := s.fal.Fetch(ctx, url)
+	if err != nil {
+		log.Printf("fal: fetch cover for %q: %v", topic, err)
+		room.progress("cover", "", StepFailed, "could not fetch the image", 0, 0)
+		return
+	}
+	path := "/covers/" + coverSlug(key) + ".png"
+	s.coverPNG.Store(path, png)
+	s.covers.Store(key, path)
 	room.mu.Lock()
-	room.Cover = url
+	room.Cover = path
 	room.mu.Unlock()
 	room.progress("cover", "", StepDone, fmt.Sprintf("%s · %s", joinObjects(objects), time.Since(start).Round(time.Second)), 0, 0)
 }

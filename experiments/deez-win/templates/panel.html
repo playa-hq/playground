@@ -44,7 +44,7 @@
       <h2 class="pixel h2">You won the roll</h2>
       <p class="muted">Name a set of things. The graph resolves it to real entities and the others each claim an axis.</p>
       <form hx-post="/rooms/{{.Room.Code}}/topic" class="stack">
-        <input type="text" name="topic" class="plain topic-input" placeholder="{{index .Suggestions 0}}…" autocomplete="off" autofocus required>
+        <input type="text" name="topic" class="plain topic-input" placeholder="{{index .Suggestions 0}}…" autocomplete="off" required>
         <div class="row wrap">
           {{range .Suggestions}}
             <!-- Own request, not the form's submitter: htmx 4 does not send
