@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M16YVHTGJC7KR32WGQXVDAZW",
+  "session_id": "01a04de4-f976-7410-b1fa-b861b020b1b2",
+  "strategy": "manual-commit",
+  "created_at": "2026-08-29T14:30:27.86527Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "experiments/deez-win/README.md",
+    "experiments/deez-win/render.go",
+    "experiments/deez-win/server.go",
+    "experiments/deez-win/static/app.css",
+    "experiments/deez-win/templates/home.html",
+    "experiments/deez-win/templates/lobby.html"
+  ],
+  "agent": "Codex",
+  "model": "gpt-5.6-terra",
+  "turn_id": "df0c640f5b76",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 66013,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1409024,
+    "output_tokens": 11912,
+    "api_call_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-08-29T14:30:27.713328Z",
+    "agent_lines": 144,
+    "agent_removed": 109,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 144,
+    "total_lines_changed": 253,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
