@@ -72,6 +72,8 @@ func TestSharedDarkThemeIncludesMobileLayout(t *testing.T) {
 		"--bg: #07080A",
 		"--panel: #101216",
 		"--accent: #72F1C6",
+		"animation: hero-die-roll",
+		"@keyframes hero-die-roll",
 		"@media (max-width: 560px)",
 		"min-height: 44px",
 	} {

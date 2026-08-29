@@ -206,9 +206,9 @@ cannot wait on an inference round-trip, and this way a round costs nothing.
 
 ## The look
 
-The landing page is the wordmark and a monochrome 3D d6: DEEZ.WIN as big as
-the container allows, one span per letter so each springs in on its own beat
-and boops on hover. Its single Play button leans toward the cursor and opens
+The landing page is the wordmark and a monochrome rolling 3D d6: DEEZ.WIN as
+big as the container allows, one span per letter so each springs in on its own
+beat and boops on hover. Its single Play button leans toward the cursor and opens
 the lobby screen. Creating, joining, sound and account controls all live on
 that next screen, so the front door stays focused even as the game changes.
 

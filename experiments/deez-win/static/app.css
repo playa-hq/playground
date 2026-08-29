@@ -666,9 +666,11 @@ body:has(.home-shell)::after {
 }
 .home-art { min-height: min(64vh, 650px); position: relative; display: grid; place-items: center; }
 .home-art img {
+  --roll-left: -20px; --roll-right: 28px; --roll-hop: -22px;
+  --roll-mid-left: -10px; --roll-mid-up: -8px; --roll-nudge: 7px;
   width: min(52vw, 650px); height: auto; position: relative; z-index: 2;
   filter: grayscale(1) contrast(1.12) drop-shadow(0 42px 42px rgba(0,0,0,.7));
-  animation: die-float 7s ease-in-out infinite;
+  animation: hero-die-roll 6.4s infinite; will-change: transform;
 }
 .die-orbit {
   position: absolute; width: min(42vw, 520px); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.32);
@@ -680,9 +682,14 @@ body:has(.home-shell)::after {
 }
 .note-top { right: 2%; top: 12%; }
 .note-bottom { left: 2%; bottom: 12%; transform: rotate(180deg); }
-@keyframes die-float {
-  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
-  50% { transform: translateY(-15px) rotate(1.5deg); }
+@keyframes hero-die-roll {
+  0%, 52% { transform: translate3d(0,0,0) rotate(0deg); animation-timing-function: cubic-bezier(.55,.05,.7,.35); }
+  60% { transform: translate3d(var(--roll-left), -14px, 0) rotate(-86deg) scale(1.02); }
+  68% { transform: translate3d(var(--roll-right), var(--roll-hop), 0) rotate(-182deg) scale(.99); }
+  76% { transform: translate3d(var(--roll-mid-left), var(--roll-mid-up), 0) rotate(-276deg) scale(1.015); }
+  84% { transform: translate3d(var(--roll-nudge), 0, 0) rotate(-354deg) scale(.99); animation-timing-function: cubic-bezier(.2,.8,.25,1); }
+  89% { transform: translate3d(-3px,-2px,0) rotate(-366deg) scale(1.005); }
+  94%, 100% { transform: translate3d(0,0,0) rotate(-360deg); }
 }
 .home-foot {
   position: relative; left: auto; right: auto; bottom: auto; z-index: 2;
@@ -700,7 +707,11 @@ body:has(.home-shell)::after {
   .home-shell .hero-line { max-width: 32ch; margin-top: 22px; }
   .home-shell .play-strip { justify-content: center; margin-top: 26px; }
   .home-art { min-height: 30vh; order: -1; margin-bottom: -3vh; }
-  .home-art img { width: min(76vw, 380px); }
+  .home-art img {
+    --roll-left: -10px; --roll-right: 15px; --roll-hop: -12px;
+    --roll-mid-left: -6px; --roll-mid-up: -5px; --roll-nudge: 4px;
+    width: min(76vw, 380px);
+  }
   .die-orbit { width: min(64vw, 320px); }
   .die-note { display: none; }
   .home-foot { font-size: 8px; letter-spacing: .08em; }
