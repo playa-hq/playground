@@ -50,6 +50,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	s.auth.Routes(mux)
 
 	mux.HandleFunc("GET /{$}", s.handleHome)
+	mux.HandleFunc("GET /play", s.handleLobby)
 	mux.HandleFunc("GET /lobbies", s.handleLobbies)
 	mux.HandleFunc("GET /leaderboard", s.handleLeaderboard)
 	mux.HandleFunc("POST /login", s.handleLogin)
@@ -79,8 +80,14 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) *D3bitUser {
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
+	render(w, http.StatusOK, homeTmpl, "layout", homeView{Letters: strings.Split("DEEZ.WIN", "")})
+}
+
+// handleLobby is the first point where a visitor needs a player identity: the
+// landing page is just an entry point, while this page creates and joins rooms.
+func (s *Server) handleLobby(w http.ResponseWriter, r *http.Request) {
 	u := s.session(w, r)
-	render(w, http.StatusOK, homeTmpl, "layout", s.homeView(u, ""))
+	render(w, http.StatusOK, lobbyTmpl, "layout", s.homeView(u, ""))
 }
 
 func (s *Server) homeView(u *D3bitUser, msg string) homeView {
@@ -107,11 +114,11 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 }
 
 func (s *Server) handleLobbies(w http.ResponseWriter, r *http.Request) {
-	render(w, http.StatusOK, homeTmpl, "lobbies", s.homeView(s.auth.User(r), ""))
+	render(w, http.StatusOK, lobbyTmpl, "lobbies", s.homeView(s.auth.User(r), ""))
 }
 
 func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
-	render(w, http.StatusOK, homeTmpl, "leaderboard", s.homeView(s.auth.User(r), ""))
+	render(w, http.StatusOK, lobbyTmpl, "leaderboard", s.homeView(s.auth.User(r), ""))
 }
 
 func rankOf(b *Leaderboard, u *D3bitUser) int {
@@ -128,7 +135,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err := s.sendMagicLink(r.Context(), email); err != nil {
 		msg = err.Error()
 	}
-	render(w, http.StatusOK, homeTmpl, "account", s.homeView(s.auth.User(r), msg))
+	render(w, http.StatusOK, lobbyTmpl, "account", s.homeView(s.auth.User(r), msg))
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +144,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	}); ok {
 		lo.Logout(w, r)
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/play", http.StatusSeeOther)
 }
 
 func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
@@ -183,12 +190,12 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/rooms/"+room.Code, http.StatusSeeOther)
 }
 
-// fail re-renders the home page with a message. htmx 4 swaps error responses by
+// fail re-renders the lobby page with a message. htmx 4 swaps error responses by
 // default, so returning real HTML here means the user sees the problem in place.
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, msg string) {
 	v := s.homeView(s.auth.User(r), "")
 	v.Error = msg
-	render(w, http.StatusUnprocessableEntity, homeTmpl, "layout", v)
+	render(w, http.StatusUnprocessableEntity, lobbyTmpl, "layout", v)
 }
 
 func (s *Server) renderRoom(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
