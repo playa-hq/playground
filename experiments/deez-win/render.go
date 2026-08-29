@@ -17,10 +17,10 @@ var funcs = template.FuncMap{
 	"pips": pips,
 }
 
-// Two template sets rather than one: "body" is defined twice (home and room),
-// so they cannot live in the same set.
+// Each page defines "body", so each gets its own template set.
 var (
 	homeTmpl  = mustParse("templates/layout.html", "templates/home.html")
+	lobbyTmpl = mustParse("templates/layout.html", "templates/lobby.html")
 	roomTmpl  = mustParse("templates/layout.html", "templates/room.html", "templates/panel.html")
 	panelTmpl = mustParse("templates/room.html", "templates/panel.html")
 )

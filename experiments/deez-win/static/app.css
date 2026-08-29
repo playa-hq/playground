@@ -432,6 +432,12 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; position: relative; z-index: 1; animation: enter .6s 1.1s both; }
 @media (max-width: 860px) { .grid3 { grid-template-columns: 1fr; } }
 
+.lobby-hero { margin-bottom: 20px; }
+.lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+.lobby-actions .card { display: flex; flex-direction: column; justify-content: center; }
+.lobby-grid { margin-top: 20px; animation: none; }
+@media (max-width: 680px) { .lobby-actions { grid-template-columns: 1fr; } }
+
 @media (prefers-reduced-motion: reduce) {
   .ltr { animation: none; transition: none; }
   .ltr:hover, .ltr:nth-child(even):hover { transform: none; }

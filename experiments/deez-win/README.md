@@ -39,6 +39,10 @@ The full loop, end to end, verified by playing a 3-player game through the API:
 lobby → rolling → topic → subtopics → building → quiz → results
 ```
 
+The front door stays deliberately minimal: `/` presents one **Play** button.
+It leads to `/play`, where players can create a private or public lobby, join
+with a code, browse public lobbies, and manage their account.
+
 - **Anonymous auth via D3BIT** — `POST /auth/anon` gives every player a name and
   colour with no signup. Email magic-link and Google sign-in upgrade the account
   and keep the score.
@@ -178,12 +182,12 @@ cannot wait on an inference round-trip, and this way a round costs nothing.
 
 ## The look
 
-The home page is the wordmark: DEEZ.WIN as big as the container allows, one
+The landing page is the wordmark: DEEZ.WIN as big as the container allows, one
 span per letter so each springs in on its own beat, shimmers, and boops on
 hover — the Josh Comeau idiom (overshoot, person-triggered, never looping for
-its own sake). Sparkles pop around it, gradient orbs drift behind, and the
-Play button leans toward the cursor. No copy explains the mechanics there,
-so the game type can change without touching the front door.
+its own sake). Sparkles pop around it, gradient orbs drift behind, and its
+single Play button leans toward the cursor. Lobby controls live on the next
+screen, so the front door can stay focused even as the game changes.
 
 An arcade cabinet that prints receipts. Press Start 2P for anything the
 cabinet says (codes, scores, headers), JetBrains Mono for anything a person

@@ -1,109 +1,15 @@
 {{define "body"}}
 <div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
 
-<div class="topbar home-top">
-  <span></span>
-  <div class="row">
-    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
-    {{with .User}}<span class="tag {{if not .IsAnon}}live{{end}}">{{.DisplayName}}{{if .IsAnon}} · guest{{end}}</span>{{end}}
-  </div>
-</div>
-
-{{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
-
 <section class="hero-big">
   <!-- One span per letter: each springs in on its own beat and boops on hover. -->
   <h1 class="wordmark" aria-label="deez.win">
     {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
   </h1>
   <div class="sparkles" aria-hidden="true"></div>
-  <p class="hero-line">2–4 players · dice decide · answers with receipts</p>
-
-  <form method="post" action="/rooms" class="play-strip">
-    <div class="stepper" role="radiogroup" aria-label="Number of players">
-      {{range $n := .PlayerCounts}}
-        <label class="seg">
-          <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
-          <span>{{$n}}</span>
-        </label>
-      {{end}}
-    </div>
-    <button class="primary big magnet" name="public" value="0"><span>Play</span></button>
-    <button class="ghost" name="public" value="1">Public lobby</button>
-  </form>
-
-  <form method="post" action="/join" class="join-strip">
-    <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
-           autocomplete="off" required pattern="[A-Za-z0-9]{4}" aria-label="Room code">
-    <button>Join</button>
+  <form method="get" action="/play" class="play-strip">
+    <button class="primary big magnet"><span>Play</span></button>
   </form>
 </section>
-
-<div class="grid3">
-  <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
-    {{template "leaderboard" .}}
-  </div>
-  <!-- Polled on its own so a lobby appearing elsewhere shows up here without
-       touching the rest of the page. -->
-  <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
-    {{template "lobbies" .}}
-  </div>
-  <div class="card" id="account">{{template "account" .}}</div>
-</div>
-
-<p class="footer">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>
 <script src="/home.js"></script>
-{{end}}
-
-{{define "lobbies"}}
-<label class="field">Public lobbies</label>
-{{if .Lobbies}}
-  {{range .Lobbies}}
-    <div class="lobby-item">
-      <span class="pixel small">{{.Code}}</span>
-      <span class="muted small">{{.Players}}/{{.MaxPlayers}} players</span>
-      <form method="post" action="/join"><input type="hidden" name="code" value="{{.Code}}"><button>Join</button></form>
-    </div>
-  {{end}}
-{{else}}
-  <p class="muted small tight">Nobody is waiting right now. Make a public lobby and it shows up here.</p>
-{{end}}
-{{end}}
-
-{{define "account"}}
-<label class="field">Account</label>
-{{if and .User (not .User.IsAnon)}}
-  <p class="small">Signed in as <strong>{{or .User.Email .User.DisplayName}}</strong>.</p>
-  <form method="post" action="/logout"><button class="ghost">Log out</button></form>
-{{else}}
-  <p class="small muted">You're a guest. Sign in to keep your score on the board.</p>
-  <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
-    <input type="email" name="email" placeholder="you@example.com" class="plain" required>
-    <div class="row wrap">
-      <button>Email me a link</button>
-      <a class="btn" href="{{.GoogleURL}}">Google</a>
-    </div>
-  </form>
-  {{with .LoginMsg}}<p class="small muted">{{.}}</p>{{end}}
-{{end}}
-{{end}}
-
-{{define "leaderboard"}}
-<label class="field">All-time</label>
-{{if .Top}}
-  {{range $i, $s := .Top}}
-    <div class="player{{if and $.User (eq $s.PlayerID $.User.ID)}} me{{end}}">
-      <span class="pixel rank">{{inc $i}}</span>
-      <span class="dot" style="background:{{$s.Color}}"></span>
-      <span class="name">{{$s.DisplayName}}</span>
-      <span class="muted small games">{{$s.Wins}}W</span>
-      <span class="score">{{$s.Score}}</span>
-    </div>
-  {{end}}
-  {{if gt .MyRank 10}}
-    <p class="muted small tight">You are #{{.MyRank}}. Keep playing.</p>
-  {{end}}
-{{else}}
-  <p class="muted small tight">Nobody has finished a game yet. Be first.</p>
-{{end}}
 {{end}}
