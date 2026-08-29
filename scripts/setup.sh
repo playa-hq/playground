@@ -43,6 +43,25 @@ else
   warn "  grab the binary from https://app.aikido.dev/settings/integrations/localscan"
 fi
 
+# --- agent pointers ------------------------------------------------------
+# AGENTS.md is the committed, tool-neutral instruction file. Some agents only
+# look for their own filename, so drop a local pointer for whichever are
+# installed. These are gitignored — the repo stays agent-agnostic.
+info "Agent instructions"
+pointer() {
+  local file="$1" bin="$2"
+  command -v "$bin" >/dev/null 2>&1 || return 0
+  if [ -f "$file" ]; then
+    ok "$file already present"
+    return 0
+  fi
+  printf '# Agent instructions live in AGENTS.md so every tool reads the same file.\n@AGENTS.md\n' > "$file"
+  ok "wrote $file -> AGENTS.md"
+}
+pointer CLAUDE.md claude
+pointer GEMINI.md gemini
+[ -f AGENTS.md ] || warn "AGENTS.md is missing — read it before changing anything"
+
 # --- env -------------------------------------------------------------------
 info "Environment"
 if [ -f .env ]; then

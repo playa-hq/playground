@@ -32,3 +32,18 @@ Org and project created under the `eu` jurisdiction — the event and the team a
 Barcelona, so session data stays in the EU. `.entire/settings.json` is committed and is
 agent-neutral; `.claude/`, `.codex/`, `.cursor/` etc. are gitignored so each of us runs
 `entire enable --agent <ours>` and nobody's choice is forced on anyone else.
+
+### 2026-08-29 — AGENTS.md is the instruction file; tool-specific names are generated
+
+Agent guidance lives in a committed, tool-neutral `AGENTS.md`. Files named for a
+particular agent (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) are gitignored and
+written by `scripts/setup.sh` as one-line pointers to it. Keeps the repo free of
+any agent's name while still being read automatically by whichever tool you use.
+
+### 2026-08-29 — Commit to main; branch only on collision
+
+Experiments are isolated by folder, so three people on main rarely conflict, and
+a single timeline makes `entire recap` a real standup. Entire's checkpoints are
+per-branch, so work on a side branch is invisible to the team's search until it
+merges. Branch when two people share an experiment, or before anything risky
+near a demo.

@@ -66,6 +66,41 @@ playa/
 
 ---
 
+## Working together
+
+**Read [`AGENTS.md`](AGENTS.md) first.** It is the instruction file every coding
+agent reads, and it carries the rules that aren't obvious from the code — no
+agent attribution in git, the data-grounds-truth rule, and what to run before
+pushing. `make setup` drops a local pointer file for whichever agent you use, so
+you don't have to remember to load it.
+
+Onboarding is three commands:
+
+```bash
+make setup
+entire login
+entire enable --agent <yours>   # then restart your agent, or hooks won't load
+```
+
+That restart matters. Agents read hook config at startup, so enabling Entire
+mid-session captures nothing — `entire checkpoint list` staying at zero is the
+tell.
+
+### Branch or not?
+
+**Work directly on `main` while you're in your own experiment folder.** Three
+people in separate directories barely conflict, and it keeps one searchable
+timeline — `entire recap` then genuinely summarizes the whole team's work, which
+is your standup for free. Checkpoints are per-branch, so work parked on a branch
+is invisible to everyone else's `entire search` until it merges.
+
+**Branch when two of you are inside the same experiment**, or when you're about
+to try something that could break a demo an hour before judging.
+
+Two files conflict often because everyone appends to them —
+`experiments/README.md`'s log table and `docs/decisions.md`. Conflicts there are
+always trivial: keep both sides.
+
 ## The stack
 
 Built on the hackathon's sponsor tooling. Full setup and usage notes in
