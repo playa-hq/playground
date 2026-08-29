@@ -8,10 +8,9 @@
 <link rel="stylesheet" href="/app.css">
 <style>
   .vid-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px; box-sizing: border-box; }
-  .vid-shell video { width: auto; height: 88vh; max-width: 100%; background: #000; border-radius: 12px; outline: 1px solid rgba(255,255,255,.12); }
+  .vid-shell video { width: min(100%, calc(86vh * 464 / 350)); height: auto; max-height: 86vh; background: #000; border-radius: 12px; outline: 1px solid rgba(255,255,255,.12); }
   .vid-actions { display: flex; gap: 22px; align-items: center; margin: 0; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
   .vid-actions a { color: inherit; }
-  @media (max-width: 700px) { .vid-shell video { width: 100%; height: auto; max-height: 88vh; } }
 </style>
 </head>
 <body>
