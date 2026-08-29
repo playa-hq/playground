@@ -34,7 +34,7 @@ func TestIllustrateChainsGenerationAndCutout(t *testing.T) {
 
 	f := &Fal{apiKey: "k", client: srv.Client()}
 	f.base = srv.URL + "/"
-	url, err := f.Illustrate(context.Background(), "Big Tech (Apple, Microsoft)")
+	url, err := f.Illustrate(context.Background(), coverObjects("Big Tech (Apple, Microsoft)", nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,35 @@ func TestIllustrateChainsGenerationAndCutout(t *testing.T) {
 	if gotCutURL != "https://cdn/gen.png" {
 		t.Errorf("cut-out should take the generated image, got %s", gotCutURL)
 	}
-	if !strings.Contains(gotPrompt, "Apple") || !strings.Contains(gotPrompt, "white background") {
-		t.Errorf("prompt lost the subject or the flat ground: %s", gotPrompt)
+	if strings.Contains(gotPrompt, "Apple") || strings.Contains(gotPrompt, "Big Tech") {
+		t.Errorf("topic text or entity names must never reach the prompt: %s", gotPrompt)
+	}
+	if !strings.Contains(gotPrompt, "a microchip") || !strings.Contains(gotPrompt, "white background") {
+		t.Errorf("prompt lost the objects or the flat ground: %s", gotPrompt)
+	}
+}
+
+func TestCoverObjects(t *testing.T) {
+	cases := []struct {
+		topic      string
+		industries []string
+		want       string
+	}{
+		{"Spanish fintech startups", nil, "a leather wallet"},
+		{"Big Tech companies", nil, "a microchip"},
+		{"European banks", []string{"FINANCIAL_INSURANCE"}, "a leather wallet"},
+		{"random things", nil, "a glass office tower"},
+		{"car makers", nil, "a sports car"},
+	}
+	for _, c := range cases {
+		got := coverObjects(c.topic, c.industries)
+		if len(got) == 0 || got[0] != c.want {
+			t.Errorf("coverObjects(%q, %v) = %v, want first %q", c.topic, c.industries, got, c.want)
+		}
+		for _, o := range got {
+			if strings.Contains(strings.ToLower(c.topic), o) {
+				t.Errorf("object %q echoes the topic", o)
+			}
+		}
 	}
 }

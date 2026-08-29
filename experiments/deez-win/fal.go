@@ -15,8 +15,8 @@ import (
 //   - fal-ai/flux/schnell  four-step FLUX, ~2s, cheap: the picture itself
 //   - fal-ai/birefnet      segmentation: cuts the subject out onto transparency
 //
-// The prompt asks FLUX for a lone subject on a flat white ground so BiRefNet
-// has an easy edge to find; the result is an RGBA PNG that sits on any field.
+// The prompt asks FLUX for objects on a flat white ground so BiRefNet has an
+// easy edge to find; the result is an RGBA PNG that sits on any field.
 type Fal struct {
 	apiKey string
 	base   string
@@ -60,10 +60,10 @@ func (f *Fal) run(ctx context.Context, model string, in any, out any) error {
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// Illustrate renders a subject and returns the URL of a transparent PNG.
-func (f *Fal) Illustrate(ctx context.Context, subject string) (string, error) {
-	prompt := fmt.Sprintf("a single bold, glossy sticker-style illustration of %s, centered, "+
-		"isolated on a flat solid white background, soft studio lighting, no text, no watermark", subject)
+// Illustrate renders the objects and returns the URL of a transparent PNG.
+// Callers pass objects, never a topic string: see coverObjects.
+func (f *Fal) Illustrate(ctx context.Context, objects []string) (string, error) {
+	prompt := coverPrompt(objects)
 
 	var gen struct {
 		Images []struct {
@@ -78,7 +78,7 @@ func (f *Fal) Illustrate(ctx context.Context, subject string) (string, error) {
 		return "", err
 	}
 	if len(gen.Images) == 0 {
-		return "", fmt.Errorf("fal: no image for %q", subject)
+		return "", fmt.Errorf("fal: no image for %v", objects)
 	}
 
 	var cut struct {
