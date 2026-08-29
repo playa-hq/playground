@@ -1,0 +1,92 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M172JVC38H1Q762EY2PY9B0B",
+  "session_id": "0d1e84e2-39fa-4cab-82e1-be1c54f9b66a",
+  "strategy": "manual-commit",
+  "created_at": "2026-08-29T15:35:35.034718526Z",
+  "branch": "covers-self",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "experiments/deez-win/c1",
+    "experiments/deez-win/c2",
+    "experiments/deez-win/c3",
+    "experiments/deez-win/fal.go",
+    "experiments/deez-win/main.go",
+    "experiments/deez-win/render.go",
+    "experiments/deez-win/server.go",
+    "experiments/deez-win/static/sfx.js",
+    "experiments/deez-win/templates/layout.html",
+    "experiments/deez-win/templates/panel.html"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-fable-5",
+  "turn_id": "ee42592ac070",
+  "checkpoint_transcript_start": 858,
+  "transcript_lines_at_start": 858,
+  "compact_transcript_start": 114,
+  "token_usage": {
+    "input_tokens": 348,
+    "cache_creation_tokens": 11197,
+    "cache_read_tokens": 2068508,
+    "output_tokens": 8600,
+    "api_call_count": 6
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_0181PkTgKLW7G2Ab8vJktEvW",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "frontend-design:frontend-design"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "07321fe7486d",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 198,
+        "end": 199,
+        "entry_ids": [
+          "be6063ff-a8a1-4f58-9d9b-5757bb3fede3"
+        ],
+        "tool_use_id": "toolu_0181PkTgKLW7G2Ab8vJktEvW"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_0181PkTgKLW7G2Ab8vJktEvW"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: frontend-design:frontend-design",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-08-29T15:35:34.805981245Z",
+    "agent_lines": 507,
+    "agent_removed": 79,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 507,
+    "total_lines_changed": 586,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
