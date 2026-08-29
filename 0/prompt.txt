@@ -1,0 +1,12 @@
+[Image #1] 
+
+use d3bit.com (~/workspace/d3bit) for anonymous / user creation and ai, but we'll also use all the sponsors please
+
+please look at the image in depth ^. 
+we're thinking of building an informative quiz game thats easily accessible, where the topic is a mix of all the players topics ish;
+help us brainstorm to build this simple ai augmented cool game. you can create unlisted games with codes or public, we're think 2-4 players rooms max; has to be taking info from cala i assume, maybe the topic matchmaking of the players:
+players choose random topic hidden
+- p1: fintechs
+- p2: cities
+- p3: toilets
+1st step: use a smart LLM to combine these topics, maybe create 3 options the players can vote on first before starting + fal generated pictures why not
