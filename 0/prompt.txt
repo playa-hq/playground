@@ -1,0 +1,5 @@
+Make the receipt as a roll, no a paper that just got printed, fix it, also when i am creating a lobby and i press '' leave'' dont throw me back to homepage, just back to the pege where i can create the lobby  push to main
+
+---
+
+make the dice roll on the homepage, push to main
