@@ -60,3 +60,19 @@ Uploads are checksummed because a truncated transfer on a slow link produced a
 binary that installed cleanly and then died with SIGBUS. The deploy script
 verifies the hash, keeps the previous binary, and rolls back if the service does
 not come up.
+
+### 2026-08-29 — Worktrees and PRs, superseding commit-to-main
+
+Earlier guidance was to commit straight to `main`, on the reasoning that folder
+isolation makes conflicts rare and one timeline makes `entire recap` a real
+standup. That is now superseded: everyone, people and agents alike, works in a
+git worktree on a branch and lands through a PR.
+
+Worktrees let several agents run at once without fighting over a single checkout
+or over `git stash`. The cost is that Entire's checkpoints are per-branch, so
+reasoning stays invisible to the team's search until a branch merges — which is
+the argument for keeping branches short rather than for avoiding them.
+
+`.github/workflows/check.yml` gates every PR on gofmt, vet, test, build, shell
+syntax for the deploy scripts, and an obvious-credential scan. Deploys stay on
+`main` only, so a PR can prove it builds but can never ship.

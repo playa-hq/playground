@@ -1,0 +1,83 @@
+name: check
+
+# Gates every PR. Deploys are a separate workflow that only runs on main, so a
+# PR can never ship anything — it can only prove it builds.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push to a PR makes the previous run irrelevant.
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add an experiment here when it gains Go code.
+        experiment: [deez-win]
+    defaults:
+      run:
+        working-directory: experiments/${{ matrix.experiment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: experiments/${{ matrix.experiment }}/go.sum
+
+      - name: Formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would change these files:"; echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build ./...
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Deploy scripts run as root on a host with live services; a syntax error
+      # there is worth catching before it is merged, not at deploy time.
+      - name: Shell syntax
+        run: |
+          fail=0
+          for f in $(git ls-files '*.sh' 'experiments/*/ops/*' 'scripts/*'); do
+            head -1 "$f" | grep -q '^#!.*sh' || continue
+            if head -1 "$f" | grep -q bash; then
+              bash -n "$f" || fail=1
+            else
+              sh -n "$f" || fail=1
+            fi
+            echo "ok: $f"
+          done
+          exit $fail
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Cheap backstop for the one mistake that is expensive to undo. Aikido is
+      # the real scanner; this catches the obvious shapes in a PR diff.
+      - name: Obvious credential shapes
+        run: |
+          if git grep -nEI '(AIK_CI_[A-Za-z0-9]{8}|sk-or-v1-[A-Za-z0-9]{16}|sk-proj-[A-Za-z0-9]{16}|BEGIN (RSA|OPENSSH) PRIVATE KEY)' -- . ':!*.md'; then
+            echo "::error::Something matching a credential is committed. Rotate it, do not just delete the line."
+            exit 1
+          fi
+          echo "no obvious credentials found"

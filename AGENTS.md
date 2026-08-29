@@ -34,6 +34,42 @@ everyone picks their own tool. `.entire/settings.json` is shared and committed.
 If `entire checkpoint list` stays at zero after a turn, your hooks did not load
 — they are read at agent startup, so restart your agent after `entire enable`.
 
+## Worktrees and PRs
+
+Work happens on a branch in its own git worktree, and lands through a PR.
+
+```bash
+git worktree add ../playa-<topic> -b <topic>
+cd ../playa-<topic>
+make setup            # each worktree needs its own .env and agent pointer
+```
+
+A worktree is a separate checkout, so gitignored files do not come with it:
+`.env`, `CLAUDE.md`/`GEMINI.md`, and any built binary are per-worktree.
+
+Entire tracks each worktree separately — `entire session current` is per
+worktree, and `entire session adopt <id> --from ../other` moves a session that
+followed you. **Checkpoints are per-branch**, so your work is invisible to the
+team's `entire search` until the branch merges. That is expected; it also means
+a long-lived branch hides your reasoning from everyone else, so keep them short.
+
+Open the PR early, even as a draft — it is the thing your teammates and their
+agents read to decide whether your work collides with theirs.
+
+```bash
+gh pr create --fill --draft
+gh pr ready          # when it is worth reviewing
+```
+
+Keep a PR to one experiment. A PR that touches two experiments plus shared docs
+is one nobody can merge quickly, which is the only cost that matters today.
+
+When you are done, delete the worktree so it stops shadowing branch state:
+
+```bash
+git worktree remove ../playa-<topic>
+```
+
 ## How work is structured
 
 One folder per experiment under `experiments/`, self-contained, with a `run.sh`

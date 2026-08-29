@@ -86,20 +86,30 @@ That restart matters. Agents read hook config at startup, so enabling Entire
 mid-session captures nothing — `entire checkpoint list` staying at zero is the
 tell.
 
-### Branch or not?
+### Worktrees and PRs
 
-**Work directly on `main` while you're in your own experiment folder.** Three
-people in separate directories barely conflict, and it keeps one searchable
-timeline — `entire recap` then genuinely summarizes the whole team's work, which
-is your standup for free. Checkpoints are per-branch, so work parked on a branch
-is invisible to everyone else's `entire search` until it merges.
+Everyone — people and agents — works in their own git worktree on a branch, and
+lands through a PR.
 
-**Branch when two of you are inside the same experiment**, or when you're about
-to try something that could break a demo an hour before judging.
+```bash
+git worktree add ../playa-<topic> -b <topic>
+cd ../playa-<topic> && make setup
+gh pr create --fill --draft
+```
 
-Two files conflict often because everyone appends to them —
-`experiments/README.md`'s log table and `docs/decisions.md`. Conflicts there are
-always trivial: keep both sides.
+Worktrees mean several agents can run at once without fighting over one checkout
+or over `git stash`. Each worktree needs its own `make setup`, because `.env` and
+the agent pointer files are gitignored and do not travel with a checkout.
+
+Every PR runs build, vet and test before it can merge — see
+`.github/workflows/check.yml`. Only merges to `main` deploy.
+
+Two things worth knowing:
+
+- **Checkpoints are per-branch.** Your reasoning is invisible to the team's
+  `entire search` until the branch merges, so keep branches short.
+- **`experiments/README.md` and `docs/decisions.md` conflict often**, since
+  everyone appends to them. Always trivial — keep both sides, add at the end.
 
 ## The stack
 
