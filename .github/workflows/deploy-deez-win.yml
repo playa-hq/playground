@@ -14,6 +14,10 @@ on:
       - '!experiments/deez-win/**.md'
       - '!experiments/deez-win/ops/**'
   workflow_dispatch:
+    # Manual dispatch is restricted to main to prevent deploying unvalidated code.
+    # The check workflow (formatting, shell syntax, credential scan) only runs on
+    # PRs, so a branch that bypasses PR review also bypasses those validations.
+    branches: [main]
 
 concurrency:
   # Never let two deploys race for the same binary.
@@ -34,6 +38,14 @@ jobs:
         working-directory: experiments/deez-win
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify deployment from main branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Deployment is only allowed from the main branch. Current ref: ${{ github.ref }}"
+            exit 1
+          fi
+          echo "Verified: deploying from main branch"
 
       - uses: actions/setup-go@v5
         with:
