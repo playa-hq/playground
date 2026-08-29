@@ -6,6 +6,7 @@
 
 {{if .Room.Error}}<div class="banner danger">{{.Room.Error}}</div>{{end}}
 {{with .Flash}}<div class="banner danger">{{.}}</div>{{end}}
+{{with .Room.Notice}}<div class="banner">{{.}}</div>{{end}}
 
 {{if eq .Room.Phase "lobby"}}
   <div class="card stack phase" data-sfx-phase="lobby">
@@ -86,7 +87,7 @@
   <div class="card phase" data-sfx-phase="building">
     <span class="eyebrow">Building</span>
     <h2 class="pixel h2">Reading the graph</h2>
-    <p class="muted">Pulling sourced values for <strong>{{.Room.Topic}}</strong>.</p>
+    <p class="muted">{{or .Room.Status "Working…"}}{{if not .Entities}} <span class="small">This can take a minute the first time a topic is asked.</span>{{end}}</p>
     {{if .Entities}}
       <div class="chips ticking">{{range $i, $e := .Entities}}<span class="chip" style="--i:{{$i}}">{{$e}}</span>{{end}}</div>
     {{end}}

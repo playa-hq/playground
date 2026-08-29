@@ -68,6 +68,7 @@ func main() {
 
 	if cala.Enabled() {
 		log.Printf("cala: enabled")
+		cala.Warm(CalaTopicSuggestions())
 	} else {
 		log.Printf("cala: no CALA_API_KEY — running on offline fixtures")
 	}

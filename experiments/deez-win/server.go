@@ -263,33 +263,52 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	room.Topic = topic
+	room.Notice = ""
+	// Resolution is model-backed and slow (35–60s live), so it runs off the
+	// request path; the room polls its way into the sub-topic phase.
+	room.Phase = PhaseBuilding
+	room.Status = "Resolving “" + topic + "” to real entities…"
 	room.mu.Unlock()
 
-	subs := s.resolveSubTopics(r.Context(), room, topic)
-	if len(subs) == 0 {
-		room.mu.Lock()
-		room.Topic = ""
-		room.mu.Unlock()
-		s.renderPanel(w, r, room, u.ID, "Nothing playable for that topic. Try another.")
-		return
-	}
+	go s.resolveTopicAsync(room, u.ID, topic)
+	s.renderPanel(w, r, room, u.ID, "")
+}
+
+func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+	defer cancel()
+
+	subs := s.resolveSubTopics(ctx, room, topic)
 
 	room.mu.Lock()
+	if room.Phase != PhaseBuilding || room.Topic != topic {
+		room.mu.Unlock()
+		return
+	}
+	room.Status = ""
+	if len(subs) == 0 {
+		room.Topic = ""
+		room.graph = nil
+		room.Phase = PhaseTopic
+		room.Notice = "The graph has nothing playable for “" + topic + "”. Try a set of companies."
+		room.mu.Unlock()
+		return
+	}
 	room.SubTopics = subs
 	room.Phase = PhaseSubTopics
 	// With two players nobody follows the topic picker, so their own choice
 	// stands and the round builds immediately.
 	if room.NextSubTopicPicker() == "" {
-		room.SubTopics[0].ClaimedBy = u.ID
+		room.SubTopics[0].ClaimedBy = picker
 		room.Phase = PhaseBuilding
+		room.Status = "Pulling sourced values…"
 	}
 	building := room.Phase == PhaseBuilding
 	room.mu.Unlock()
 
 	if building {
-		go s.startQuiz(room)
+		s.startQuiz(room)
 	}
-	s.renderPanel(w, r, room, u.ID, "")
 }
 
 func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
@@ -333,6 +352,7 @@ func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
 	building := room.NextSubTopicPicker() == ""
 	if building {
 		room.Phase = PhaseBuilding
+		room.Status = "Pulling sourced values…"
 	}
 	room.mu.Unlock()
 
@@ -438,16 +458,14 @@ func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string)
 		return offlineSubTopics(topic)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
-	defer cancel()
-
+	start := time.Now()
 	g, err := s.cala.BuildTopicGraph(ctx, topic)
 	if err != nil {
 		log.Printf("cala: topic %q: %v", topic, err)
 		return nil
 	}
 	subs := g.SubTopics(5)
-	log.Printf("cala: topic %q → %d entities, %d axes", topic, len(g.Entities), len(subs))
+	log.Printf("cala: topic %q → %d entities, %d axes in %s", topic, len(g.Entities), len(subs), time.Since(start).Round(time.Millisecond))
 	if len(subs) == 0 {
 		return nil
 	}
@@ -470,6 +488,7 @@ func (s *Server) startQuiz(room *Room) {
 
 	room.mu.Lock()
 	defer room.mu.Unlock()
+	room.Status = ""
 
 	if err != nil || len(qs) == 0 {
 		room.Error = "Could not build a round from that topic. Start another game."

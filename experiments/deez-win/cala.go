@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,13 +27,16 @@ type Cala struct {
 	apiKey  string
 	baseURL string
 	client  *http.Client
+	graphs  sync.Map // topic → *TopicGraph
 }
 
 func NewCala(apiKey string) *Cala {
 	return &Cala{
 		apiKey:  apiKey,
 		baseURL: envOr("CALA_URL", "https://api.cala.ai"),
-		client:  &http.Client{Timeout: 25 * time.Second},
+		// knowledge/query is model-backed and takes 35–60s on a set; everything
+		// else answers in about a second.
+		client: &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
@@ -43,6 +47,9 @@ type CalaEntity struct {
 	Name        string `json:"name"`
 	EntityType  string `json:"entity_type"`
 	Description string `json:"description"`
+	// Mentions is how the entity was named in query results — the join key
+	// between a result row and the entity it is about.
+	Mentions []string `json:"mentions,omitempty"`
 }
 
 // CalaMetric is one numerical observation series as listed by introspection.
@@ -85,6 +92,20 @@ type CalaEntityDetail struct {
 }
 
 func (c *Cala) do(ctx context.Context, method, path string, body any, out any) error {
+	err := c.once(ctx, method, path, body, out)
+	if err != nil && strings.Contains(err.Error(), "429") {
+		// The rate limit is per second-ish; one pause and retry clears it.
+		select {
+		case <-time.After(8 * time.Second):
+		case <-ctx.Done():
+			return err
+		}
+		return c.once(ctx, method, path, body, out)
+	}
+	return err
+}
+
+func (c *Cala) once(ctx context.Context, method, path string, body any, out any) error {
 	var reader = bytes.NewReader(nil)
 	if body != nil {
 		raw, err := json.Marshal(body)

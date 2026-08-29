@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // A TopicGraph is what Cala knows about one topic: the entities the topic
@@ -25,10 +27,11 @@ const (
 // thing ("Apple") the query may name nothing, so fall back to fuzzy search and
 // take the neighbours it returns.
 func (c *Cala) resolveTopic(ctx context.Context, topic string) ([]CalaEntity, error) {
-	_, entities, err := c.Query(ctx, topic)
+	rows, entities, err := c.Query(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
+	entities = subjectsOnly(rows, entities)
 	if len(entities) < axisMinShared {
 		more, err := c.SearchEntities(ctx, topic, graphEntityCap)
 		if err != nil && len(entities) == 0 {
@@ -40,6 +43,70 @@ func (c *Cala) resolveTopic(ctx context.Context, topic string) ([]CalaEntity, er
 		entities = entities[:graphEntityCap]
 	}
 	return entities, nil
+}
+
+// subjectsOnly keeps the entities the result rows are *about*. The query
+// also links every place, investor and country a row mentions — "Spanish
+// fintechs" comes back with Barcelona, Y Combinator and Spain attached —
+// and none of those belong in a round about fintechs. A row's subject is its
+// first text column; an entity stays if one of its mentions matches one.
+func subjectsOnly(rows []map[string]any, entities []CalaEntity) []CalaEntity {
+	var subjects []string
+	for _, row := range rows {
+		for _, k := range sortedKeysStable(row) {
+			if v, ok := row[k].(string); ok && v != "" {
+				subjects = append(subjects, strings.ToLower(v))
+				break
+			}
+		}
+	}
+	if len(subjects) == 0 {
+		return entities
+	}
+	matches := func(e CalaEntity) bool {
+		names := append([]string{e.Name}, e.Mentions...)
+		for _, n := range names {
+			n = strings.ToLower(n)
+			for _, s := range subjects {
+				if n == s || strings.HasPrefix(s, n) || strings.HasPrefix(n, s) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	var out []CalaEntity
+	for _, e := range entities {
+		if matches(e) {
+			out = append(out, e)
+		}
+	}
+	if len(out) == 0 {
+		return entities
+	}
+	return out
+}
+
+// sortedKeysStable puts a row's columns in the order the API sent them as far
+// as Go's map allows: the subject column is conventionally first and named
+// like the topic, so prefer keys that are not obviously attributes.
+func sortedKeysStable(row map[string]any) []string {
+	keys := sortedKeys(row)
+	sort.SliceStable(keys, func(i, j int) bool {
+		return subjectKeyRank(keys[i]) < subjectKeyRank(keys[j])
+	})
+	return keys
+}
+
+func subjectKeyRank(k string) int {
+	k = strings.ToLower(k)
+	switch {
+	case k == "name" || k == "company" || k == "startup" || k == "entity" || k == "organization" || k == "bank":
+		return 0
+	case strings.Contains(k, "name") || strings.Contains(k, "compan"):
+		return 1
+	}
+	return 2
 }
 
 func mergeEntities(a, b []CalaEntity) []CalaEntity {
@@ -56,7 +123,40 @@ func mergeEntities(a, b []CalaEntity) []CalaEntity {
 }
 
 // BuildTopicGraph resolves the topic and introspects every entity in parallel.
+// Results are cached by topic for the life of the process: resolution is the
+// slow, model-backed step, and the same demo topics get picked all evening.
 func (c *Cala) BuildTopicGraph(ctx context.Context, topic string) (*TopicGraph, error) {
+	key := strings.ToLower(strings.TrimSpace(topic))
+	if g, ok := c.graphs.Load(key); ok {
+		return g.(*TopicGraph), nil
+	}
+	g, err := c.buildTopicGraph(ctx, topic)
+	if err == nil {
+		c.graphs.Store(key, g)
+	}
+	return g, err
+}
+
+// Warm resolves topics ahead of time so the suggestions on the pick screen
+// answer instantly. Runs in the background; failures only cost a log line.
+// Sequential on purpose: concurrent queries hit the rate limit.
+func (c *Cala) Warm(topics []string) {
+	go func() {
+		for _, t := range topics {
+			ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+			start := time.Now()
+			g, err := c.BuildTopicGraph(ctx, t)
+			cancel()
+			if err != nil {
+				log.Printf("cala: warm %q: %v", t, err)
+				continue
+			}
+			log.Printf("cala: warm %q → %d entities, %d axes in %s", t, len(g.Entities), len(g.SubTopics(5)), time.Since(start).Round(time.Second))
+		}
+	}()
+}
+
+func (c *Cala) buildTopicGraph(ctx context.Context, topic string) (*TopicGraph, error) {
 	entities, err := c.resolveTopic(ctx, topic)
 	if err != nil {
 		return nil, err
@@ -115,7 +215,10 @@ func (g *TopicGraph) SubTopics(n int) []SubTopic {
 		}
 		for _, metrics := range in.NumericalObservations {
 			for _, m := range metrics {
-				bump(SubTopic{Key: m.Name, Kind: SubTopicMetric, Label: m.Name})
+				if isBoringMetric(m.Name) {
+					continue
+				}
+				bump(SubTopic{Key: m.Name, Kind: SubTopicMetric, Label: metricLabel(m.Name)})
 			}
 		}
 	}
@@ -137,10 +240,22 @@ func (g *TopicGraph) SubTopics(n int) []SubTopic {
 		return out[i].st.Key < out[j].st.Key
 	})
 
+	// Metrics are plentiful and near-duplicates of each other (three flavours
+	// of revenue), so they get at most two slots and one per family.
 	res := make([]SubTopic, 0, n)
+	metrics := 0
+	families := map[string]bool{}
 	for _, t := range out {
 		if len(res) == n {
 			break
+		}
+		if t.st.Kind == SubTopicMetric {
+			fam := metricFamily(t.st.Key)
+			if metrics >= 2 || families[fam] {
+				continue
+			}
+			metrics++
+			families[fam] = true
 		}
 		res = append(res, t.st)
 	}
@@ -187,7 +302,10 @@ func axisScore(st SubTopic) int {
 		return 80
 	case SubTopicMetric:
 		switch {
-		case strings.HasPrefix(k, "revenue"), k == "revenues":
+		case strings.HasPrefix(k, "revenue"):
+			if k == "revenues" {
+				return 91 // the plain series over its long-named siblings
+			}
 			return 90
 		case strings.Contains(k, "net income"):
 			return 85
@@ -233,6 +351,44 @@ func isBoringProperty(name string) bool {
 	return false
 }
 
+// isBoringMetric drops series nobody should be quizzed on.
+func isBoringMetric(name string) bool {
+	k := strings.ToLower(name)
+	return strings.Contains(k, "deprecated") || strings.Contains(k, "per share") ||
+		strings.Contains(k, "weighted") || strings.Contains(k, "tax") && !strings.HasPrefix(k, "revenue")
+}
+
+// metricFamily groups "Revenues" and "Revenue from Contract with Customer…"
+// so a round does not ask the same thing twice.
+func metricFamily(name string) string {
+	k := strings.ToLower(name)
+	switch {
+	case strings.HasPrefix(k, "revenue"), strings.HasPrefix(k, "sales"):
+		return "revenue"
+	case strings.Contains(k, "net income"):
+		return "net income"
+	case strings.Contains(k, "assets"):
+		return "assets"
+	case strings.Contains(k, "cash"):
+		return "cash"
+	}
+	return k
+}
+
+// metricLabel shortens taxonomy names to what a host would say.
+func metricLabel(name string) string {
+	switch metricFamily(name) {
+	case "revenue":
+		return "Revenue"
+	case "net income":
+		return "Net income"
+	}
+	if i := strings.IndexAny(name, ",("); i > 0 {
+		return strings.TrimSpace(name[:i])
+	}
+	return name
+}
+
 func isBoringRelation(name string) bool {
 	k := strings.ToLower(name)
 	return strings.Contains(k, "parent") || strings.Contains(k, "beneficiary") ||
@@ -258,4 +414,13 @@ func humanize(key string) string {
 		return key
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func sortedKeys(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

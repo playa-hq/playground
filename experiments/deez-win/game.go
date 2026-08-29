@@ -105,6 +105,10 @@ type Room struct {
 
 	QuestionCount int    `json:"question_count"`
 	Error         string `json:"error,omitempty"`
+	// Status is what the room is doing while players wait (resolving a
+	// topic, pulling values); Notice is a one-off message for the next screen.
+	Status string `json:"status,omitempty"`
+	Notice string `json:"notice,omitempty"`
 
 	CreatedAt  time.Time `json:"created_at"`
 	questionAt time.Time

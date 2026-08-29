@@ -119,6 +119,21 @@ Set the key without it touching a shell history, transcript or git:
 `cala_test.go` runs the whole pipeline against a mock of the documented
 response shapes, so parsing is verified without a key.
 
+**Measured live (2026-08-29):** `knowledge/query` takes 35–60s on a fresh
+set and ~4s once Cala has seen it; introspection ~5s per entity (run in
+parallel); a value fetch under 1s. Concurrent queries return 429. So:
+
+- Resolution runs **off the request path** — the room sits in the building
+  screen with a status line and polls its way forward.
+- Topic graphs are **cached per process**, and the suggested topics are
+  **warmed at startup**, sequentially, so the demo topics answer instantly.
+- One retry after 8s on a 429.
+
+"Big Tech companies" resolves to Apple, Microsoft, Amazon, Meta, NVIDIA and
+offers *Employee count · Founding date · Revenue · Net income · Industry*, with
+SEC 10-Q, Revelio Labs and GLEIF as sources. Fuzzy `entities?name=` is only a
+fallback: "car maker" finds "MUSCLE MAKER, INC.".
+
 ## Run it
 
 ```bash
@@ -178,9 +193,12 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
 - **The UI has been rendered headlessly (home, axes, quiz, results) but not
   played by hand in a real browser.** htmx swaps, the bonus bar restart and
   the keyboard answers still want a human check.
-- **Cala has not been hit with a real key yet.** The client follows the
-  published reference and passes the mock test; the first `-probe` run will
-  tell us whether real topics resolve to enough shared axes.
+- **A typed topic costs up to a minute the first time.** Cached and warmed
+  topics are instant; anything new sits on the building screen. Whether
+  players tolerate that is a playtest question, and it presses on the
+  four-minute kill criterion.
+- Kill criterion #1 (coverage) is now measurable with `-probe` but not yet
+  measured across "topics players naturally type" — only on curated sets.
 - **`htmx.org@4.0.0` is not the npm `latest` tag yet** (that still points at
   2.0.10), so the version in the CDN URL is pinned deliberately. Don't "fix" it
   to a range.
