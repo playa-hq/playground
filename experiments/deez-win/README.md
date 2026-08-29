@@ -187,7 +187,9 @@ span per letter so each springs in on its own beat, shimmers, and boops on
 hover — the Josh Comeau idiom (overshoot, person-triggered, never looping for
 its own sake). Sparkles pop around it, gradient orbs drift behind, and its
 single Play button leans toward the cursor. Lobby controls live on the next
-screen, so the front door can stay focused even as the game changes.
+screen, so the front door can stay focused even as the game changes. The
+composition is deliberately compact: the mark and entry action sit together
+instead of floating in a large empty field.
 
 An arcade cabinet that prints receipts. Press Start 2P for anything the
 cabinet says (codes, scores, headers), JetBrains Mono for anything a person

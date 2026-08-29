@@ -353,12 +353,16 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
  * overshoot, triggered by the person, never looping for its own sake. */
 
 .home-top { margin-bottom: 0; }
-.hero-big { text-align: center; padding: 8vh 0 6vh; position: relative; }
+.hero-big {
+  text-align: center;
+  padding: clamp(28px, 4vh, 52px) 0 clamp(32px, 4vh, 48px);
+  position: relative;
+}
 
 .wordmark {
   font-family: 'Excalifont', monospace;
   /* 8 glyphs at 1em each plus spacing must fit #app (980px) and any phone. */
-  font-size: clamp(34px, 10.4vw, 108px);
+  font-size: clamp(34px, 9vw, 92px);
   line-height: 1; margin: 0; letter-spacing: .02em;
   display: inline-flex; white-space: nowrap; position: relative; z-index: 2;
   cursor: default; user-select: none;
@@ -422,6 +426,7 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
   display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap;
   animation: enter .6s .8s both;
 }
+.hero-big .play-strip { margin-top: clamp(20px, 3vh, 30px); }
 .join-strip { margin-top: 18px; animation-delay: .95s; }
 .join-strip input.code { width: 190px; }
 .play-strip .stepper { gap: 8px; }
