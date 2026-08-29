@@ -90,10 +90,20 @@ func main() {
 
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           mux,
+		Handler:           withSecurityHeaders(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Fatal(server.ListenAndServe())
+}
+
+// withSecurityHeaders keeps transport policy on every response, including
+// errors and static files. Browsers only honor HSTS over HTTPS, so the header
+// is inert for local HTTP development and enforced behind the TLS proxy.
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func envOr(key, def string) string {

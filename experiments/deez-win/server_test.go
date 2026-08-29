@@ -4,9 +4,23 @@ import (
 	"bytes"
 	"image"
 	_ "image/png"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestSecurityHeadersIncludeHSTS(t *testing.T) {
+	handler := withSecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "https://deez.win/", nil))
+
+	if got := recorder.Header().Get("Strict-Transport-Security"); got != "max-age=31536000; includeSubDomains" {
+		t.Fatalf("Strict-Transport-Security = %q", got)
+	}
+}
 
 func TestQuestionCount(t *testing.T) {
 	tests := map[string]int{
