@@ -15,7 +15,7 @@ first line of code, and gets thrown away without ceremony when it doesn't work.
 ## Quick start
 
 ```bash
-git clone <this-repo> && cd playa
+git clone git@github.com:playa-hq/playground.git && cd playground
 make setup          # install + verify the toolchain, create .env
 $EDITOR .env        # add your keys
 make doctor         # confirm everything is wired up
@@ -59,6 +59,7 @@ playa/
 ├── docs/
 │   ├── stack.md       # deep reference for every tool below
 │   └── decisions.md   # what we chose and why — append-only
+├── .entire/            # shared Entire config (committed)
 ├── Makefile
 └── .env.example
 ```
@@ -81,10 +82,17 @@ same hooks.
 
 ```bash
 curl -fsSL https://entire.io/install.sh | bash
-entire login && entire enable
+entire login                # device auth — approve as yourself
+entire enable --agent <your-agent>
 entire search "why did we drop the websocket approach"
 entire recap                # standup, generated
 ```
+
+The `playa-hq` org and its `playground` project already exist (EU region), and all
+three of us are members. You only need `login` + `enable` on your own machine — pick
+whichever agent you actually use. Agent hook directories (`.claude/`, `.codex/`,
+`.cursor/`, …) are gitignored on purpose: the shared config is `.entire/settings.json`,
+everything else is yours.
 
 ### fal.ai — `genmedia`
 

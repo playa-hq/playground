@@ -19,3 +19,16 @@ touch. Duplicate freely; extract on the third occurrence.
 
 Written into every experiment README by the template. Deciding what failure looks like
 while calm is worth more than deciding it while tired and invested.
+
+### 2026-08-29 — GitHub org `playa-hq`, repo `playground`
+
+`playa` was taken. An org (rather than a personal repo) so the code isn't hostage to one
+account, teammates are added once, and integrations install at org scope for every future
+experiment repo. Repo starts private.
+
+### 2026-08-29 — Entire org in the EU region; agent hooks stay personal
+
+Org and project created under the `eu` jurisdiction — the event and the team are in
+Barcelona, so session data stays in the EU. `.entire/settings.json` is committed and is
+agent-neutral; `.claude/`, `.codex/`, `.cursor/` etc. are gitignored so each of us runs
+`entire enable --agent <ours>` and nobody's choice is forced on anyone else.

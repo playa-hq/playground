@@ -7,6 +7,15 @@
 # --- entire (personal overrides) ---
 .entire/settings.local.json
 
+# --- agent hooks (per-developer, installed by `entire agent add`) ---
+# The repo is agent-agnostic: everyone picks their own. Shared Entire config
+# lives in .entire/settings.json, which IS committed.
+.claude/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+
 # --- aikido ---
 .aikidotmp/
 
