@@ -19,6 +19,18 @@ automated.
 
 Port **8087** was free at setup time (8080, 8082–8084, 8090, 8091 were taken).
 
+## Status
+
+Done on `dice` as of 2026-08-29: app directory, systemd unit (enabled), nginx
+site, deploy scripts, and the restricted CI key. GitHub secrets are set and the
+`production` environment exists. A CI deploy has run green end to end, and a
+full 3-player game was played against the live instance using real D3BIT
+anonymous auth.
+
+**Outstanding: DNS.** `deez.win` still resolves to Cloudflare. Point the A
+record at `46.101.104.158` with the proxy off, then run certbot (below). Until
+then the site is only reachable with an explicit Host header.
+
 ## One-time server setup
 
 ```bash

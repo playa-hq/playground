@@ -47,3 +47,16 @@ a single timeline makes `entire recap` a real standup. Entire's checkpoints are
 per-branch, so work on a side branch is invisible to the team's search until it
 merges. Branch when two people share an experiment, or before anything risky
 near a demo.
+
+### 2026-08-29 — deez.win deploys from CI, with the key confined by a forced command
+
+The VPS has no Go toolchain, so CI builds and ships the binary, matching the
+manual build → scp → restart flow the other services on that box use. The host
+also runs live production, so the CI key is pinned behind an SSH forced command
+that permits exactly two operations: writing the upload path and running the
+deploy script. A shell, another path, or any forwarding is refused — verified.
+
+Uploads are checksummed because a truncated transfer on a slow link produced a
+binary that installed cleanly and then died with SIGBUS. The deploy script
+verifies the hash, keeps the previous binary, and rolls back if the service does
+not come up.
