@@ -24,6 +24,7 @@ type Server struct {
 	origin   string
 	store    *Store
 	cala     *Cala
+	fal      *FAL
 	board    *Leaderboard
 }
 
@@ -453,6 +454,9 @@ func (s *Server) startQuiz(room *Room) {
 	defer cancel()
 
 	qs, err := s.buildQuestions(ctx, room)
+	if err == nil {
+		s.fal.AddQuestionImages(ctx, room.Topic, qs, 2)
+	}
 
 	room.mu.Lock()
 	defer room.mu.Unlock()

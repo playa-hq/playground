@@ -74,6 +74,7 @@ type Question struct {
 	Fact      string   `json:"fact,omitempty"`
 	Source    string   `json:"source,omitempty"`
 	SourceURL string   `json:"source_url,omitempty"`
+	ImageURL  string   `json:"image_url,omitempty"`
 
 	// SeededBy is the player whose sub-topic produced this question. They
 	// score less on it — knowing your own axis shouldn't win the game.

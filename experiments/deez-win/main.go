@@ -28,6 +28,7 @@ func main() {
 	flag.Parse()
 
 	cala := NewCala(os.Getenv("CALA_API_KEY"))
+	fal := NewFAL(os.Getenv("FAL_KEY"))
 
 	var auth sessionSource = NewAuth(*d3bitURL)
 	if *devAuth {
@@ -51,6 +52,7 @@ func main() {
 		origin:   *origin,
 		store:    NewStore(),
 		cala:     cala,
+		fal:      fal,
 	}
 
 	mux := http.NewServeMux()
@@ -66,6 +68,11 @@ func main() {
 		log.Printf("cala: enabled")
 	} else {
 		log.Printf("cala: no CALA_API_KEY — running on offline fixtures")
+	}
+	if fal.Enabled() {
+		log.Printf("fal: enabled for the first 2 questions")
+	} else {
+		log.Printf("fal: no FAL_KEY — questions remain text-only")
 	}
 	log.Printf("listening on http://localhost%s", *addr)
 

@@ -157,6 +157,10 @@ button.ghost { background: transparent; }
 .subtopic.claimed { opacity: .5; }
 
 .prompt { font-size: 20px; margin: 6px 0 20px; line-height: 1.45; }
+.question-image {
+  display: block; width: 100%; max-height: 360px; object-fit: cover;
+  border: 2px solid var(--line); border-radius: 12px; margin: 0 0 20px;
+}
 .progress { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-bottom: 18px; }
 .progress > i { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
 

@@ -90,6 +90,7 @@
       </div>
       <div class="progress"><i style="width:{{.Pct}}%"></i></div>
       <p class="prompt">{{.Prompt}}</p>
+      {{with .ImageURL}}<img class="question-image" src="{{.}}" alt="" referrerpolicy="no-referrer">{{end}}
       <div class="choices">
         {{range .Choices}}
           <button class="choice {{.Class}}"

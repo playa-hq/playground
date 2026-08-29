@@ -97,6 +97,7 @@ type questionView struct {
 	Fact       string
 	Source     string
 	SourceURL  string
+	ImageURL   string
 	Waiting    int
 	Pct        int
 }
@@ -208,6 +209,7 @@ func questionViewFor(room *Room, q *Question, me string) *questionView {
 		Fact:      q.Fact,
 		Source:    q.Source,
 		SourceURL: q.SourceURL,
+		ImageURL:  q.ImageURL,
 		Waiting:   len(room.Players) - len(q.Answers),
 		Pct:       q.Index * 100 / max(1, len(room.Questions)),
 	}
