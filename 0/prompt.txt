@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>b4yfm5pr3</task-id>
+<tool-use-id>toolu_01SZX5wPY1iM8ojpL6wCiCaH</tool-use-id>
+<output-file>/tmp/claude-1000/-home-joe-workspace-playa/0f08d663-1797-49a2-9de8-f4c0053ec324/tasks/b4yfm5pr3.output</output-file>
+<status>completed</status>
+<summary>Background command "Start Entire device auth" completed (exit code 0)</summary>
+</task-notification>
