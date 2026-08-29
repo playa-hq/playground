@@ -76,9 +76,9 @@ func main() {
 	mux.Handle("GET /", http.FileServer(http.FS(sub)))
 
 	if fal.Enabled() {
-		log.Printf("fal: enabled (%s → %s)", falImageModel, falCutModel)
+		log.Printf("fal: enabled (covers %s → %s; first 2 quiz questions %s)", falImageModel, falCutModel, falQuizModel)
 	} else {
-		log.Printf("fal: no FAL_KEY — no cover art")
+		log.Printf("fal: no FAL_KEY — no cover art; quiz remains text-only")
 	}
 	if cala.Enabled() {
 		log.Printf("cala: enabled")
@@ -90,10 +90,20 @@ func main() {
 
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           mux,
+		Handler:           withSecurityHeaders(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Fatal(server.ListenAndServe())
+}
+
+// withSecurityHeaders keeps transport policy on every response, including
+// errors and static files. Browsers only honor HSTS over HTTPS, so the header
+// is inert for local HTTP development and enforced behind the TLS proxy.
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func envOr(key, def string) string {
