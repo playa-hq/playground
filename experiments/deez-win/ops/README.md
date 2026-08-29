@@ -27,9 +27,18 @@ site, deploy scripts, and the restricted CI key. GitHub secrets are set and the
 full 3-player game was played against the live instance using real D3BIT
 anonymous auth.
 
-**Outstanding: DNS.** `deez.win` still resolves to Cloudflare. Point the A
-record at `46.101.104.158` with the proxy off, then run certbot (below). Until
-then the site is only reachable with an explicit Host header.
+**https://deez.win is live.** Let's Encrypt certificate issued 2026-08-29,
+expires 2026-11-27, auto-renewal simulated successfully and `certbot.timer` is
+armed. HTTP 301-redirects to HTTPS.
+
+`www.deez.win` has no A record, so the certificate covers the apex only. To add
+it: create the DNS record, then
+`certbot --nginx -d deez.win -d www.deez.win --expand`.
+
+Note the `/.well-known/acme-challenge/` block in the nginx config. Without it
+nginx proxies the challenge to the Go app, which answers 404 — issuance works
+via certbot's temporary config, but **renewals would fail silently months
+later**. Do not remove it.
 
 ## One-time server setup
 
