@@ -10,6 +10,9 @@ on:
     paths:
       - 'experiments/deez-win/**'
       - '.github/workflows/deploy-deez-win.yml'
+      # Docs and ops notes don't change the binary; don't redeploy for them.
+      - '!experiments/deez-win/**.md'
+      - '!experiments/deez-win/ops/**'
   workflow_dispatch:
 
 concurrency:
