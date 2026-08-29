@@ -64,6 +64,8 @@ func pips(value int) []bool {
 
 type homeView struct {
 	User         *D3bitUser
+	Top          []*Standing
+	MyRank       int
 	Lobbies      []lobbyView
 	PlayerCounts []int
 	GoogleURL    string

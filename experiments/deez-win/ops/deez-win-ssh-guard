@@ -14,6 +14,9 @@ case "$SSH_ORIGINAL_COMMAND" in
   "scp -O -t /opt/deez-win/deezwin.new"|"scp -t /opt/deez-win/deezwin.new")
     exec scp -t /opt/deez-win/deezwin.new
     ;;
+  "scp -O -t /opt/deez-win/deezwin.new.sha256"|"scp -t /opt/deez-win/deezwin.new.sha256")
+    exec scp -t /opt/deez-win/deezwin.new.sha256
+    ;;
   "deez-win-deploy")
     exec /usr/local/bin/deez-win-deploy
     ;;

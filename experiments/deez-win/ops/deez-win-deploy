@@ -11,13 +11,42 @@ SERVICE=deez-win
 
 [ -f "$DIR/$BIN.new" ] || { echo "no $DIR/$BIN.new to deploy" >&2; exit 1; }
 
+# Verify the upload arrived intact. A truncated transfer produces a binary that
+# looks fine to install(1) and then dies with SIGBUS on exec — this has already
+# happened once, on a slow link. Refuse rather than deploy a partial file.
+if [ -f "$DIR/$BIN.new.sha256" ]; then
+  # Distinguish a malformed checksum file from a genuine mismatch. Only the
+  # latter means the upload is bad; discarding a good binary because the
+  # checksum line was written wrong throws away a slow transfer for nothing.
+  if ! grep -qE "^[0-9a-f]{64}  $BIN.new\$" "$DIR/$BIN.new.sha256"; then
+    echo "checksum file is malformed, expected '<sha256>  $BIN.new' — refusing" >&2
+    rm -f "$DIR/$BIN.new.sha256"
+    exit 1
+  fi
+  if ! (cd "$DIR" && sha256sum -c --status "$BIN.new.sha256"); then
+    echo "checksum mismatch — upload is incomplete or corrupt, refusing" >&2
+    rm -f "$DIR/$BIN.new" "$DIR/$BIN.new.sha256"
+    exit 1
+  fi
+else
+  echo "warning: no .sha256 alongside the upload, cannot verify integrity" >&2
+fi
+
+# Cheap structural check even without a checksum: a complete Go binary is an
+# ELF executable and reports its own flags without side effects.
+if ! head -c 4 "$DIR/$BIN.new" | grep -q "ELF"; then
+  echo "$BIN.new is not an ELF binary, refusing" >&2
+  rm -f "$DIR/$BIN.new"
+  exit 1
+fi
+
 # Keep the outgoing binary so a bad deploy is one command from reverted.
 if [ -f "$DIR/$BIN" ]; then
   cp -f "$DIR/$BIN" "$DIR/$BIN.prev"
 fi
 
 install -o www-data -g www-data -m 755 "$DIR/$BIN.new" "$DIR/$BIN"
-rm -f "$DIR/$BIN.new"
+rm -f "$DIR/$BIN.new" "$DIR/$BIN.new.sha256"
 
 systemctl restart "$SERVICE"
 sleep 2

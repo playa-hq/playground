@@ -23,6 +23,7 @@ func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	d3bitURL := flag.String("d3bit", envOr("D3BIT_URL", "https://api.d3bit.com"), "D3BIT API base URL")
 	origin := flag.String("origin", "", "public origin for auth callbacks (default http://localhost<addr>)")
+	statePath := flag.String("leaderboard", defaultLeaderboardPath(), "path to the persisted leaderboard")
 	devAuth := flag.Bool("dev-auth", false, "use local stand-in sessions instead of D3BIT (local development only)")
 	flag.Parse()
 
@@ -40,8 +41,12 @@ func main() {
 		*origin = "http://localhost" + *addr
 	}
 
+	board := NewLeaderboard(*statePath)
+	log.Printf("leaderboard: %s", *statePath)
+
 	srv := &Server{
 		auth:     auth,
+		board:    board,
 		d3bitURL: *d3bitURL,
 		origin:   *origin,
 		store:    NewStore(),

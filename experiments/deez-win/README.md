@@ -138,7 +138,16 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
   and negative years (BC) render as negative numbers.
 - No topic-vote step or fal cover images yet — that was the original sketch's
   idea and is still worth building.
-- No leaderboard across games; scores die with the room.
+
+## Leaderboard
+
+All-time standings persist to a JSON file (`-leaderboard`, default alongside the
+binary), written through a temp file so a crash cannot truncate it. Rooms stay
+in memory — they are throwaway — but a score is the one thing worth surviving a
+deploy, and it gives the home screen the panel the original sketch always had.
+
+Ties on top score count as a win for everyone who reached it: with 2-4 players
+ties are common enough that breaking them arbitrarily reads as a bug.
 
 ## Notes
 

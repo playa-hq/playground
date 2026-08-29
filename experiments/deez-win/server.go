@@ -24,6 +24,7 @@ type Server struct {
 	origin   string
 	store    *Store
 	cala     *Cala
+	board    *Leaderboard
 }
 
 // sendMagicLink delegates to whichever auth backend is wired up.
@@ -45,6 +46,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /{$}", s.handleHome)
 	mux.HandleFunc("GET /lobbies", s.handleLobbies)
+	mux.HandleFunc("GET /leaderboard", s.handleLeaderboard)
 	mux.HandleFunc("POST /login", s.handleLogin)
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /rooms", s.handleCreateRoom)
@@ -89,6 +91,8 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 
 	return homeView{
 		User:         u,
+		Top:          s.board.Top(10),
+		MyRank:       rankOf(s.board, u),
 		Lobbies:      lobbies,
 		PlayerCounts: []int{2, 3, 4},
 		GoogleURL:    s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
@@ -98,6 +102,17 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 
 func (s *Server) handleLobbies(w http.ResponseWriter, r *http.Request) {
 	render(w, http.StatusOK, homeTmpl, "lobbies", s.homeView(s.auth.User(r), ""))
+}
+
+func (s *Server) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
+	render(w, http.StatusOK, homeTmpl, "leaderboard", s.homeView(s.auth.User(r), ""))
+}
+
+func rankOf(b *Leaderboard, u *D3bitUser) int {
+	if u == nil {
+		return 0
+	}
+	return b.Rank(u.ID)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +391,7 @@ func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 	if len(q.Answers) >= len(room.Players) {
 		if room.Current+1 >= len(room.Questions) {
 			room.Phase = PhaseResults
+			s.board.Record(room)
 		} else {
 			room.Current++
 			room.questionAt = time.Now()

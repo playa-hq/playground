@@ -54,6 +54,9 @@
   </div>
 
   <div class="stack">
+    <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
+      {{template "leaderboard" .}}
+    </div>
     <div class="card" id="account">{{template "account" .}}</div>
     <div class="card">
       <label class="field">How it works</label>
@@ -99,5 +102,25 @@
     </div>
   </form>
   {{with .LoginMsg}}<p class="small muted">{{.}}</p>{{end}}
+{{end}}
+{{end}}
+
+{{define "leaderboard"}}
+<label class="field">Leaderboard</label>
+{{if .Top}}
+  {{range $i, $s := .Top}}
+    <div class="player{{if and $.User (eq $s.PlayerID $.User.ID)}} me{{end}}">
+      <span class="pixel rank">{{inc $i}}</span>
+      <span class="dot" style="background:{{$s.Color}}"></span>
+      <span class="name">{{$s.DisplayName}}</span>
+      <span class="muted small games">{{$s.Wins}}W</span>
+      <span class="score">{{$s.Score}}</span>
+    </div>
+  {{end}}
+  {{if gt .MyRank 10}}
+    <p class="muted small tight">You are #{{.MyRank}}. Keep playing.</p>
+  {{end}}
+{{else}}
+  <p class="muted small tight">Nobody has finished a game yet. Be first.</p>
 {{end}}
 {{end}}
