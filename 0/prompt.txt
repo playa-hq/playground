@@ -1,0 +1,5 @@
+I own the domain name deez.win, lets make our game called that i guess (my team mates like it)
+
+I will add dns to my main server, i usually host built binaries and nginx route them. you can ssh explore my server root@46.101.104.158
+
+see how i handle my servers, then we can set up ci/cd with gh workflows that build them i guess and deploys them to my vps ^ after explored
