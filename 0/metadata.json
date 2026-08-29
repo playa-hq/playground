@@ -1,0 +1,65 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M172JX2QVDH8EVPGCHWCJ10M",
+  "session_id": "01a04e1c-3073-7dd3-be3c-5fe2367da9a1",
+  "strategy": "manual-commit",
+  "created_at": "2026-08-29T15:35:43.893049Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "experiments/deez-win/README.md",
+    "experiments/deez-win/game.go",
+    "experiments/deez-win/render.go",
+    "experiments/deez-win/server.go",
+    "experiments/deez-win/server_test.go",
+    "experiments/deez-win/static/app.css",
+    "experiments/deez-win/static/favicon.svg",
+    "experiments/deez-win/static/home.js",
+    "experiments/deez-win/templates/home.html",
+    "experiments/deez-win/templates/layout.html",
+    "experiments/deez-win/templates/lobby.html"
+  ],
+  "agent": "Codex",
+  "model": "gpt-5.6-sol",
+  "turn_id": "1df67cea7f20",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 90860,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2329984,
+    "output_tokens": 15215,
+    "api_call_count": 40
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-08-29T15:35:43.644483Z",
+    "agent_lines": 153,
+    "agent_removed": 54,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 70,
+    "total_committed": 153,
+    "total_lines_changed": 277,
+    "agent_percentage": 74.72924187725631,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 37,
+      "user_lines_removed": 70,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "experiments/deez-win/README.md": 5,
+        "experiments/deez-win/templates/home.html": 31,
+        "experiments/deez-win/templates/layout.html": 1
+      },
+      "user_removed_per_file": {
+        "experiments/deez-win/README.md": 8,
+        "experiments/deez-win/static/favicon.svg": 9,
+        "experiments/deez-win/templates/home.html": 52,
+        "experiments/deez-win/templates/layout.html": 1
+      }
+    }
+  ]
+}
