@@ -1,0 +1,8 @@
+okay lets build iteration 0, simplistic cool ui/ux.
+ use d3bit for auth, anon at first, can login/register with d3bit email/google auth; simple checkout other projects that use it. dont worry about ai cost etc we can limit it, checkout ~/workspace/codraw for auth + how ai is used
+
+
+lets make it so when the 3 players join, a nice animation occurs so the 3 rolls dices and who plays first. 
+with fal we can create cool 8-bit sound effects and music
+
+the first person selects the overall entity topic, each next players picks top 5 entity graph sub topic (the 5 top sub topic datas of that).
