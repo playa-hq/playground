@@ -1,0 +1,50 @@
+lets activate and use Cala. 
+Let's also work on the UI/UX to be cool.
+
+work on a branch and we do PRs, or use entires way of PRs? not sure if they have that feature yet
+
+---
+
+give me a secret prompt in to paste in the api key for cala that you can set it up to the vps via ssh'ing to it
+
+---
+
+lets add CALA KEY please, i want you to request me to give you the secret privately  & AIKIDO doesn't have api key? it just does automatically daily / on demand? or am i not finding
+
+---
+
+done
+
+---
+
+the dice game to see who goes firt need to be slower as cala / fal / agents generate things, all run things parallely ish nicely kiss / dry. 
+
+we want to be see a nice graph of things loading when users select thing more and more on the right side of progression of things getting loaded asynchly before the game starts.
+
+fal model we
+
+---
+
+the dice game to see who goes firt need to be slower as cala / fal / agents generate things, all run things parallely ish nicely kiss / dry. 
+
+we want to be see a nice graph of things loading when users select thing more and more on the right side of progression of things getting loaded asynchly before the game starts.
+
+fal model we'll choose later
+
+---
+
+deploy. fal stuff will be done by my teammate in a bit
+
+---
+
+[Image #2] i cant click the recommendations as it tells me to fill the field
+
+---
+
+Every answer
+has a receipt.
+A 2–4 player quiz that never asks a model what is true. Dice pick who chooses the topic; the questions are read straight off Cala's verified entity graph, source attached.
+
+this sucks.
+
+i want deez.win in much bigger in the center. use many cool animation from josh comeau site, for modern sites. we'll use fal.ai for image generation of the topics and things. we potentially want to change the game type
