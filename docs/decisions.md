@@ -100,3 +100,16 @@ suggested on the home screen.
 and the VPS env file over SSH. A key pasted into an agent chat lands in the
 session transcript Entire captures; a key on a command line lands in shell
 history. Both would then need rotating.
+
+### 2026-08-29 — Cala's rate limits shape the round: fetch per entity, not per axis
+
+`POST /entities/{id}` allows about five calls a minute (measured: six
+sequential calls all 429 in 0.3s, a 200 after a sixty-second pause) and a
+second in-flight `knowledge/query` is refused. A round therefore keeps six
+entities and fetches *all* ranked axes for an entity in one call, serially,
+starting as soon as the axes exist — the fetch runs under the claiming phase
+rather than after it. Per-axis fetching on claim, which is the more obvious
+shape, would cost entities × axes calls and never finish inside the limit.
+
+The same limit is why loading is shown as a graph rather than a spinner: with
+a minute of real waiting in the round, players should see what is arriving.

@@ -84,7 +84,7 @@ func mockCala(t *testing.T) *Cala {
 
 func TestPipelineAgainstDocumentedShapes(t *testing.T) {
 	c := mockCala(t)
-	g, err := c.BuildTopicGraph(context.Background(), "Big Tech")
+	g, err := c.BuildTopicGraph(context.Background(), "Big Tech", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +115,8 @@ func TestPipelineAgainstDocumentedShapes(t *testing.T) {
 	for i := range subs {
 		subs[i].ClaimedBy = "p"
 	}
-	s := &Server{cala: c}
-	details := s.fetchDetails(context.Background(), g, subs)
+	g.Fetch(context.Background(), c, subs, nil)
+	details := g.Details()
 	if len(details) != 3 {
 		t.Fatalf("details: %d", len(details))
 	}
@@ -149,6 +149,14 @@ func TestPipelineAgainstDocumentedShapes(t *testing.T) {
 			if !contains(q.Options, "Germany") || !contains(q.Options, "United States") {
 				t.Errorf("relation distractors should be other entities' values: %v", q.Options)
 			}
+		}
+	}
+}
+
+func TestReadable(t *testing.T) {
+	for in, want := range map[string]string{"FINANCIAL_INSURANCE": "Financial Insurance", "Madrid": "Madrid", "SAP SE": "SAP SE", "FINTECH": "FINTECH"} {
+		if got := readable(in); got != want {
+			t.Errorf("readable(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

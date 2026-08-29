@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // buildQuestions assembles the round from the axes players claimed.
@@ -25,7 +24,8 @@ func (s *Server) buildQuestions(ctx context.Context, r *Room) ([]*Question, erro
 		return nil, fmt.Errorf("no axes claimed")
 	}
 
-	details := s.fetchDetails(ctx, r.graph, claimed)
+	r.graph.Fetch(ctx, s.cala, claimed, nil) // no-op for axes already prefetched on claim
+	details := r.graph.Details()
 	if len(details) < 2 {
 		return nil, fmt.Errorf("cala returned too few entities for %q", r.Topic)
 	}
@@ -42,44 +42,6 @@ func (s *Server) buildQuestions(ctx context.Context, r *Room) ([]*Question, erro
 		q.Index = i
 	}
 	return qs, nil
-}
-
-// fetchDetails pulls the claimed axes for every entity in one call each.
-func (s *Server) fetchDetails(ctx context.Context, g *TopicGraph, claimed []SubTopic) []*CalaEntityDetail {
-	var props, rels, metrics []string
-	for _, st := range claimed {
-		switch st.Kind {
-		case SubTopicRelation:
-			rels = append(rels, st.Key)
-		case SubTopicMetric:
-			metrics = append(metrics, st.Key)
-		default:
-			props = append(props, st.Key)
-		}
-	}
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	var out []*CalaEntityDetail
-	for _, e := range g.Entities {
-		wg.Add(1)
-		go func(e CalaEntity) {
-			defer wg.Done()
-			d, err := s.cala.GetEntity(ctx, e.ID, props, rels, g.MetricIDs(e.ID, metrics))
-			if err != nil {
-				return
-			}
-			if d.Name == "" {
-				d.Name = e.Name
-			}
-			mu.Lock()
-			out = append(out, d)
-			mu.Unlock()
-		}(e)
-	}
-	wg.Wait()
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
 }
 
 // grounded is one entity's value on one axis.
@@ -121,7 +83,7 @@ func valuesFor(st SubTopic, details []*CalaEntityDetail) (nums, strs []grounded)
 			continue
 		}
 		if s, ok := v.Value.(string); ok && strings.TrimSpace(s) != "" {
-			g.str = strings.TrimSpace(s)
+			g.str = readable(strings.TrimSpace(s))
 			strs = append(strs, g)
 		}
 	}
@@ -262,4 +224,17 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// readable turns taxonomy codes like FINANCIAL_INSURANCE into words. Values
+// with any lowercase letter are left exactly as the source wrote them.
+func readable(s string) string {
+	if strings.ToUpper(s) != s || !strings.Contains(s, "_") {
+		return s
+	}
+	words := strings.Fields(strings.ReplaceAll(s, "_", " "))
+	for i, w := range words {
+		words[i] = strings.ToUpper(w[:1]) + strings.ToLower(w[1:])
+	}
+	return strings.Join(words, " ")
 }

@@ -15,10 +15,20 @@ import (
 type TopicGraph struct {
 	Entities []CalaEntity
 	Intro    map[string]*CalaIntrospection // entity id → axes
+
+	mu      sync.Mutex
+	details map[string]*CalaEntityDetail // entity id → values fetched so far
+	fetched map[string]bool              // entity id + axis key → already fetched
 }
 
+// Progress reports how far a step has got; nil is fine.
+type Progress func(done, total int)
+
+// calaParallel caps concurrent calls: eight at once trips the rate limit.
+const calaParallel = 3
+
 const (
-	graphEntityCap = 8 // entities kept per topic; more calls than this feels slow
+	graphEntityCap = 6 // entities kept per topic: POST /entities allows ~5 a minute
 	axisMinShared  = 3 // an axis needs this many entities to make a question
 )
 
@@ -125,12 +135,12 @@ func mergeEntities(a, b []CalaEntity) []CalaEntity {
 // BuildTopicGraph resolves the topic and introspects every entity in parallel.
 // Results are cached by topic for the life of the process: resolution is the
 // slow, model-backed step, and the same demo topics get picked all evening.
-func (c *Cala) BuildTopicGraph(ctx context.Context, topic string) (*TopicGraph, error) {
+func (c *Cala) BuildTopicGraph(ctx context.Context, topic string, onIntro Progress) (*TopicGraph, error) {
 	key := strings.ToLower(strings.TrimSpace(topic))
 	if g, ok := c.graphs.Load(key); ok {
 		return g.(*TopicGraph), nil
 	}
-	g, err := c.buildTopicGraph(ctx, topic)
+	g, err := c.buildTopicGraph(ctx, topic, onIntro)
 	if err == nil {
 		c.graphs.Store(key, g)
 	}
@@ -145,7 +155,7 @@ func (c *Cala) Warm(topics []string) {
 		for _, t := range topics {
 			ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 			start := time.Now()
-			g, err := c.BuildTopicGraph(ctx, t)
+			g, err := c.BuildTopicGraph(ctx, t, nil)
 			cancel()
 			if err != nil {
 				log.Printf("cala: warm %q: %v", t, err)
@@ -156,30 +166,181 @@ func (c *Cala) Warm(topics []string) {
 	}()
 }
 
-func (c *Cala) buildTopicGraph(ctx context.Context, topic string) (*TopicGraph, error) {
+func (c *Cala) buildTopicGraph(ctx context.Context, topic string, onIntro Progress) (*TopicGraph, error) {
 	entities, err := c.resolveTopic(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
-	g := &TopicGraph{Entities: entities, Intro: map[string]*CalaIntrospection{}}
+	g := &TopicGraph{
+		Entities: entities,
+		Intro:    map[string]*CalaIntrospection{},
+		details:  map[string]*CalaEntityDetail{},
+		fetched:  map[string]bool{},
+	}
 
-	var mu sync.Mutex
+	done := 0
+	g.each(func(e CalaEntity) {
+		in, err := c.Introspect(ctx, e.ID)
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if err == nil {
+			g.Intro[e.ID] = in
+		} else {
+			log.Printf("cala: introspect %s: %v", e.Name, err)
+		}
+		done++
+		if onIntro != nil {
+			onIntro(done, len(entities))
+		}
+	})
+	return g, nil
+}
+
+// eachSerial runs fn over the entities one after another.
+func (g *TopicGraph) eachSerial(fn func(CalaEntity)) {
+	for _, e := range g.Entities {
+		fn(e)
+	}
+}
+
+// each runs fn over the entities, calaParallel at a time.
+func (g *TopicGraph) each(fn func(CalaEntity)) {
+	sem := make(chan struct{}, calaParallel)
 	var wg sync.WaitGroup
-	for _, e := range entities {
+	for _, e := range g.Entities {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(e CalaEntity) {
 			defer wg.Done()
-			in, err := c.Introspect(ctx, e.ID)
-			if err != nil {
-				return
-			}
-			mu.Lock()
-			g.Intro[e.ID] = in
-			mu.Unlock()
+			defer func() { <-sem }()
+			fn(e)
 		}(e)
 	}
 	wg.Wait()
-	return g, nil
+}
+
+// Fetch pulls the given axes for every entity that does not have them yet,
+// merging into the graph's value cache. It is started as soon as the axes
+// are ranked — one call per entity, all axes at once, one at a time —
+// because the values endpoint allows about five calls a minute and a round
+// cannot afford entities × axes.
+func (g *TopicGraph) Fetch(ctx context.Context, c *Cala, axes []SubTopic, on Progress) {
+	var props, rels, metrics []string
+	for _, st := range axes {
+		switch st.Kind {
+		case SubTopicRelation:
+			rels = append(rels, st.Key)
+		case SubTopicMetric:
+			metrics = append(metrics, st.Key)
+		default:
+			props = append(props, st.Key)
+		}
+	}
+
+	done := 0
+	g.eachSerial(func(e CalaEntity) {
+		g.mu.Lock()
+		need := false
+		for _, st := range axes {
+			if !g.fetched[e.ID+"\x00"+st.Key] {
+				need = true
+			}
+		}
+		g.mu.Unlock()
+
+		if need {
+			d, err := c.GetEntity(ctx, e.ID, props, rels, g.MetricIDs(e.ID, metrics))
+			g.mu.Lock()
+			if err != nil {
+				log.Printf("cala: values for %s: %v", e.Name, err)
+			} else {
+				g.merge(e, d)
+				for _, st := range axes {
+					g.fetched[e.ID+"\x00"+st.Key] = true
+				}
+			}
+			g.mu.Unlock()
+		}
+
+		g.mu.Lock()
+		done++
+		g.mu.Unlock()
+		if on != nil {
+			on(done, len(g.Entities))
+		}
+	})
+}
+
+// merge folds newly fetched values into the entity's cached detail. Caller
+// holds g.mu.
+func (g *TopicGraph) merge(e CalaEntity, d *CalaEntityDetail) {
+	cur := g.details[e.ID]
+	if cur == nil {
+		cur = &CalaEntityDetail{
+			ID: e.ID, Name: e.Name,
+			Properties: map[string]CalaValue{}, Relations: map[string]CalaValue{},
+			Metrics: map[string]CalaValue{}, Units: map[string]string{},
+		}
+		g.details[e.ID] = cur
+	}
+	if d.Name != "" {
+		cur.Name = d.Name
+	}
+	for k, v := range d.Properties {
+		cur.Properties[k] = v
+	}
+	for k, v := range d.Relations {
+		cur.Relations[k] = v
+	}
+	for k, v := range d.Metrics {
+		cur.Metrics[k] = v
+		cur.Units[k] = d.Units[k]
+	}
+}
+
+// Details returns the entities that have any values, in name order.
+func (g *TopicGraph) Details() []*CalaEntityDetail {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var out []*CalaEntityDetail
+	for _, d := range g.details {
+		out = append(out, d)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// fetchedAll reports whether every entity has been asked at least once.
+func (g *TopicGraph) fetchedAll() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	n := map[string]bool{}
+	for k := range g.fetched {
+		n[strings.SplitN(k, "\x00", 2)[0]] = true
+	}
+	return len(n) >= len(g.Entities)
+}
+
+// Have counts entities that hold a value on the axis.
+func (g *TopicGraph) Have(st SubTopic) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	n := 0
+	for _, d := range g.details {
+		var ok bool
+		switch st.Kind {
+		case SubTopicRelation:
+			_, ok = d.Relations[st.Key]
+		case SubTopicMetric:
+			_, ok = d.Metrics[st.Key]
+		default:
+			_, ok = d.Properties[st.Key]
+		}
+		if ok {
+			n++
+		}
+	}
+	return n
 }
 
 // SubTopics ranks the axes shared across the topic's entities and returns the
@@ -392,7 +553,8 @@ func metricLabel(name string) string {
 func isBoringRelation(name string) bool {
 	k := strings.ToLower(name)
 	return strings.Contains(k, "parent") || strings.Contains(k, "beneficiary") ||
-		strings.Contains(k, "corporate_event") || strings.Contains(k, "subsidiary")
+		strings.Contains(k, "corporate_event") || strings.Contains(k, "subsidiary") ||
+		strings.Contains(k, "invested") || strings.Contains(k, "member_of") || strings.Contains(k, "presence")
 }
 
 // relationLabel turns HAS_HEADQUARTERS_IN into "Headquarters".

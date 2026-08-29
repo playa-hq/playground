@@ -54,6 +54,23 @@
     <span class="score">{{.Score}}</span>
   </div>
 {{end}}
+{{if .Room.Loads}}
+  <div class="topic-strip">
+    <label class="field">Loading</label>
+    <ol class="pipe">
+      {{range .Room.Loads}}
+        <li class="step {{.State}}">
+          <span class="node" aria-hidden="true"></span>
+          <span class="step-body">
+            <span class="step-label">{{.Label}}<span class="muted small step-time">{{.Elapsed}}</span></span>
+            {{with .Detail}}<span class="small muted">{{.}}</span>{{end}}
+            {{if gt .Total 0}}<span class="step-bar"><i style="width:{{.Pct}}%"></i></span>{{end}}
+          </span>
+        </li>
+      {{end}}
+    </ol>
+  </div>
+{{end}}
 {{with .Room.Topic}}
   <div class="topic-strip">
     <label class="field">Topic</label>

@@ -15,11 +15,11 @@ func runProbe(c *Cala, topic string) int {
 		fmt.Fprintln(os.Stderr, "CALA_API_KEY is not set")
 		return 2
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 
 	start := time.Now()
-	g, err := c.BuildTopicGraph(ctx, topic)
+	g, err := c.BuildTopicGraph(ctx, topic, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve:", err)
 		return 1
@@ -51,8 +51,8 @@ func runProbe(c *Cala, topic string) int {
 	for i := range subs {
 		subs[i].ClaimedBy = "probe"
 	}
-	srv := &Server{cala: c}
-	details := srv.fetchDetails(ctx, g, subs)
+	g.Fetch(ctx, c, subs, nil)
+	details := g.Details()
 	fmt.Printf("\nquestions (%d entities answered, %s total):\n", len(details), time.Since(start).Round(time.Millisecond))
 	for _, st := range subs {
 		for _, q := range axisQuestions(st, details, 2) {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -252,6 +253,7 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	room.mu.Lock()
+	room.tick()
 	switch {
 	case room.Phase != PhaseTopic:
 		room.mu.Unlock()
@@ -268,6 +270,7 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 	// request path; the room polls its way into the sub-topic phase.
 	room.Phase = PhaseBuilding
 	room.Status = "Resolving “" + topic + "” to real entities…"
+	room.Loads = nil
 	room.mu.Unlock()
 
 	go s.resolveTopicAsync(room, u.ID, topic)
@@ -277,6 +280,11 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 	defer cancel()
+
+	room.progress("topic", "Topic → entities", StepRunning, "asking the graph", 0, 0)
+	// Cover art has a slot in the graph so the round's shape is visible;
+	// the fal model is not chosen yet, so it never starts.
+	room.progress("cover", "Cover art · fal", StepPending, "model not chosen yet", 0, 0)
 
 	subs := s.resolveSubTopics(ctx, room, topic)
 
@@ -292,8 +300,13 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 		room.Phase = PhaseTopic
 		room.Notice = "The graph has nothing playable for “" + topic + "”. Try a set of companies."
 		room.mu.Unlock()
+		room.progress("topic", "", StepFailed, "nothing playable", 0, 0)
 		return
 	}
+	room.mu.Unlock()
+	room.progress("axes", "Axes ranked", StepDone, fmt.Sprintf("%d shared axes", len(subs)), 0, 0)
+	go s.prefetchValues(room, subs)
+	room.mu.Lock()
 	room.SubTopics = subs
 	room.Phase = PhaseSubTopics
 	// With two players nobody follows the topic picker, so their own choice
@@ -308,6 +321,56 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 
 	if building {
 		s.startQuiz(room)
+	}
+}
+
+// prefetchValues pulls every ranked axis for every entity as soon as the
+// axes exist, so by the time the last player claims, the values are cached
+// and the round builds instantly. Each claimed axis gets its own step in
+// the loading graph, filled from the cache as entities come in.
+func (s *Server) prefetchValues(room *Room, axes []SubTopic) {
+	g := room.graph
+	if g == nil {
+		return
+	}
+	total := len(g.Entities)
+	room.progress("values", "Values · all axes", StepRunning, "one call per entity", 0, total)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	defer cancel()
+	g.Fetch(ctx, s.cala, axes, func(done, total int) {
+		room.progress("values", "", StepRunning, fmt.Sprintf("%d/%d entities", done, total), done, total)
+		s.refreshAxisSteps(room)
+	})
+	have := len(g.Details())
+	state := StepDone
+	if have < 2 {
+		state = StepFailed
+	}
+	room.progress("values", "", state, fmt.Sprintf("%d of %d entities answered", have, total), have, total)
+	s.refreshAxisSteps(room)
+}
+
+// refreshAxisSteps upserts one step per claimed axis with how many entities
+// hold a value for it. Cheap: it only reads the cache.
+func (s *Server) refreshAxisSteps(room *Room) {
+	room.mu.Lock()
+	claimed := room.SubTopicsClaimed()
+	g := room.graph
+	room.mu.Unlock()
+
+	for _, st := range claimed {
+		key := "axis:" + st.Key
+		if g == nil {
+			room.progress(key, "Values · "+st.Label, StepDone, "offline fixtures", 0, 0)
+			continue
+		}
+		have, total := g.Have(st), len(g.Entities)
+		state := StepRunning
+		if have >= total || have >= 2 && g.fetchedAll() {
+			state = StepDone
+		}
+		room.progress(key, "Values · "+st.Label, state, fmt.Sprintf("%d/%d entities", have, total), have, total)
 	}
 }
 
@@ -356,6 +419,7 @@ func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
 	}
 	room.mu.Unlock()
 
+	go s.refreshAxisSteps(room)
 	if building {
 		go s.startQuiz(room)
 	}
@@ -455,15 +519,21 @@ func CalaTopicSuggestions() []string {
 
 func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string) []SubTopic {
 	if !s.cala.Enabled() {
-		return offlineSubTopics(topic)
+		subs := offlineSubTopics(topic)
+		room.progress("topic", "", StepDone, fmt.Sprintf("%d fixture entities", len(offlineEntitiesFor(topic))), 0, 0)
+		return subs
 	}
 
 	start := time.Now()
-	g, err := s.cala.BuildTopicGraph(ctx, topic)
+	g, err := s.cala.BuildTopicGraph(ctx, topic, func(done, total int) {
+		room.progress("topic", "", StepRunning, fmt.Sprintf("introspecting %d/%d", done, total), done, total)
+	})
 	if err != nil {
 		log.Printf("cala: topic %q: %v", topic, err)
+		room.progress("topic", "", StepFailed, "the graph did not answer", 0, 0)
 		return nil
 	}
+	room.progress("topic", "", StepDone, fmt.Sprintf("%d entities in %s", len(g.Entities), time.Since(start).Round(time.Second)), 0, 0)
 	subs := g.SubTopics(5)
 	log.Printf("cala: topic %q → %d entities, %d axes in %s", topic, len(g.Entities), len(subs), time.Since(start).Round(time.Millisecond))
 	if len(subs) == 0 {
@@ -481,10 +551,16 @@ func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string)
 // startQuiz builds questions off the request path so the picking player is not
 // left waiting on Cala; the room polls its way into the quiz phase.
 func (s *Server) startQuiz(room *Room) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
+	room.progress("questions", "Questions", StepRunning, "", 0, 0)
 	qs, err := s.buildQuestions(ctx, room)
+	if err != nil || len(qs) == 0 {
+		room.progress("questions", "", StepFailed, "no grounded questions", 0, 0)
+	} else {
+		room.progress("questions", "", StepDone, fmt.Sprintf("%d with sources", len(qs)), 0, 0)
+	}
 
 	room.mu.Lock()
 	defer room.mu.Unlock()

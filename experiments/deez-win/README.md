@@ -120,14 +120,29 @@ Set the key without it touching a shell history, transcript or git:
 response shapes, so parsing is verified without a key.
 
 **Measured live (2026-08-29):** `knowledge/query` takes 35–60s on a fresh
-set and ~4s once Cala has seen it; introspection ~5s per entity (run in
-parallel); a value fetch under 1s. Concurrent queries return 429. So:
+set and ~4s once Cala has seen it; introspection ~5s per entity; a value
+fetch under 1s — but **`POST /entities` allows roughly five calls a minute**
+and a second concurrent query 429s. So:
 
 - Resolution runs **off the request path** — the room sits in the building
   screen with a status line and polls its way forward.
 - Topic graphs are **cached per process**, and the suggested topics are
   **warmed at startup**, sequentially, so the demo topics answer instantly.
-- One retry after 8s on a 429.
+- A topic keeps **six entities**, and their values are fetched **one call
+  per entity, all five axes at once, serially**, starting the moment the
+  axes are ranked — while players are still claiming. Claims read from the
+  cache, so the round builds instantly once the last pick lands.
+- 429s back off in 10s steps, up to four tries.
+
+## The loading graph
+
+Everything the round waits on is a `LoadStep` on the room — topic resolution,
+axes, values per entity, one line per claimed axis, and a slot for fal cover
+art (pending until a model is chosen). Goroutines report with one call,
+`room.progress(key, …)`, which upserts by key; the roster panel draws the
+list as a rail with a node per step, and it fills in on the right while
+players pick on the left. The dice hold for three seconds after the last one
+lands, so the roll is seen and background work has a head start.
 
 "Big Tech companies" resolves to Apple, Microsoft, Amazon, Meta, NVIDIA and
 offers *Employee count · Founding date · Revenue · Net income · Industry*, with

@@ -184,6 +184,26 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .topic-strip { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .topic-name { font-size: 12px; color: var(--accent); text-transform: uppercase; word-break: break-word; }
 
+/* The loading graph: a vertical rail of steps, one node each. */
+.pipe { list-style: none; margin: 0; padding: 0; position: relative; }
+.pipe::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.step { display: flex; gap: 12px; padding: 6px 0; position: relative; }
+.node {
+  flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; margin-top: 3px;
+  background: var(--panel); border: 2px solid var(--line); box-sizing: border-box;
+}
+.step.running .node { border-color: var(--accent); border-top-color: transparent; animation: spin .9s linear infinite; }
+.step.done .node { background: var(--accent); border-color: var(--accent); }
+.step.failed .node { background: var(--danger); border-color: var(--danger); }
+.step.pending { opacity: .5; }
+.step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.step-label { font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.step-time { flex: 0 0 auto; }
+.step-bar { height: 3px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.step-bar > i { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.center { text-align: center; }
+
 /* Entity chips: what the graph resolved the topic to. */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chip {
@@ -203,7 +223,7 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr);
   padding: 13px; gap: 3px; box-shadow: var(--lift);
 }
-.die.rolling { animation: shake .38s infinite; border-color: var(--accent); }
+.die.rolling { animation: shake .32s infinite; border-color: var(--accent); }
 .die.settled { border-color: var(--gold); animation: land .3s cubic-bezier(.2,.8,.2,1) both; }
 .die .pip { width: 13px; height: 13px; border-radius: 50%; background: var(--ink); align-self: center; justify-self: center; }
 @keyframes shake {

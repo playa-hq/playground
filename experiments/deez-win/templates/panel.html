@@ -20,7 +20,7 @@
 {{else if eq .Room.Phase "rolling"}}
   <div class="card phase" data-sfx-phase="rolling">
     <span class="eyebrow">Roll</span>
-    <h2 class="pixel h2">Highest die picks the topic</h2>
+    <h2 class="pixel h2">{{if .RollWinner}}{{.RollWinner}} picks the topic{{else}}Highest die picks the topic{{end}}</h2>
     <div class="dice-wrap">
       {{range .Room.Players}}
         <div>
@@ -32,8 +32,9 @@
     {{if not .IHaveRolled}}
       <!-- The dice are theatre, not a decision: fire once, after a beat, so the
            animation is seen. `load delay:` means no JS is needed for it. -->
-      <div hx-post="/rooms/{{.Room.Code}}/roll" hx-trigger="load delay:900ms"></div>
+      <div hx-post="/rooms/{{.Room.Code}}/roll" hx-trigger="load delay:2400ms"></div>
     {{end}}
+    <p class="muted small center">{{if .RollWinner}}Locking it in…{{else}}Rolling…{{end}}</p>
   </div>
 
 {{else if eq .Room.Phase "topic"}}

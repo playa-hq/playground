@@ -92,15 +92,20 @@ type CalaEntityDetail struct {
 }
 
 func (c *Cala) do(ctx context.Context, method, path string, body any, out any) error {
-	err := c.once(ctx, method, path, body, out)
-	if err != nil && strings.Contains(err.Error(), "429") {
-		// The rate limit is per second-ish; one pause and retry clears it.
+	// Limits are per minute and undocumented (measured: ~5 POST /entities
+	// and one knowledge/query in flight). Back off in growing steps rather
+	// than hammer; a whole minute of waiting still beats a round without data.
+	var err error
+	for attempt, wait := 0, 10*time.Second; attempt < 4; attempt, wait = attempt+1, wait+10*time.Second {
+		err = c.once(ctx, method, path, body, out)
+		if err == nil || !strings.Contains(err.Error(), "429") {
+			return err
+		}
 		select {
-		case <-time.After(8 * time.Second):
+		case <-time.After(wait):
 		case <-ctx.Done():
 			return err
 		}
-		return c.once(ctx, method, path, body, out)
 	}
 	return err
 }
