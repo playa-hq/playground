@@ -1,0 +1,8 @@
+lets activate and use Cala. 
+Let's also work on the UI/UX to be cool.
+
+work on a branch and we do PRs, or use entires way of PRs? not sure if they have that feature yet
+
+---
+
+give me a secret prompt in to paste in the api key for cala that you can set it up to the vps via ssh'ing to it
