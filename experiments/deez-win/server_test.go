@@ -96,7 +96,7 @@ func TestLobbyOffersQuestionCounts(t *testing.T) {
 	}
 }
 
-func TestResultsRenderReceiptPrinter(t *testing.T) {
+func TestResultsRenderReceiptRoll(t *testing.T) {
 	var out bytes.Buffer
 	v := &roomView{
 		Room: &Room{Phase: PhaseResults, Topic: "Cities"},
@@ -112,9 +112,10 @@ func TestResultsRenderReceiptPrinter(t *testing.T) {
 	}
 	html := out.String()
 	for _, want := range []string{
-		`class="receipt-printer"`,
-		`class="printer-slot"`,
+		`class="receipt-roll"`,
+		`class="roll-spool"`,
 		`class="receipt-paper"`,
+		`class="receipt-rolled-edge"`,
 		"RECEIPT · Cities",
 		"Lisbon was founded around 1200 BC.",
 		"every line above has a source",
@@ -122,5 +123,20 @@ func TestResultsRenderReceiptPrinter(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("rendered results are missing %q", want)
 		}
+	}
+	if strings.Contains(html, "printer-slot") {
+		t.Error("receipt roll still renders the old printer slot")
+	}
+}
+
+func TestRoomLeaveReturnsToLobbyPage(t *testing.T) {
+	var out bytes.Buffer
+	v := &roomView{Room: &Room{Code: "ABCD", Phase: PhaseLobby, MaxPlayer: 2}, FullPage: true}
+	if err := roomTmpl.ExecuteTemplate(&out, "layout", v); err != nil {
+		t.Fatal(err)
+	}
+	html := out.String()
+	if !strings.Contains(html, `<a class="btn ghost small" href="/play">Leave</a>`) {
+		t.Fatal("room Leave action does not return to the lobby page")
 	}
 }

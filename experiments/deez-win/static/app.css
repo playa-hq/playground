@@ -322,53 +322,60 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .review { padding: 10px 0; }
 .waiting { margin-top: 12px; }
 
-/* The final fact summary feeds out of a receipt printer. The paper and its
- * contents keep the established receipt treatment; only the entrance gains
- * physical depth and a stepped thermal-printer rhythm. */
-.receipt-printer { position: relative; margin-top: 26px; padding: 0 10px 18px; perspective: 900px; }
-.printer-head {
-  position: relative; z-index: 4; height: 34px; margin: 0 -10px;
-  border: 2px solid var(--line); border-radius: 10px 10px 5px 5px;
-  background: linear-gradient(180deg, #242830 0%, #171A20 58%, #0E1014 100%);
-  box-shadow: 0 7px 0 rgba(0,0,0,.52), 0 13px 22px rgba(0,0,0,.36);
+/* The summary is a receipt roll, not a printer. The cylinder stays visible
+ * while the sourced review unfurls from it; the lower edge remains curled. */
+.receipt-roll { position: relative; margin-top: 28px; padding: 12px 10px 22px; perspective: 900px; }
+.roll-spool {
+  position: relative; z-index: 4; width: calc(100% - 36px); height: 48px; margin: 0 auto -8px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 15px, rgba(25,28,34,.035) 15px 16px),
+    linear-gradient(180deg, #fff 0%, #dedad1 44%, var(--paper) 68%, #c9c4ba 100%);
+  box-shadow: 0 12px 18px rgba(0,0,0,.3), inset 0 2px 2px rgba(255,255,255,.9), inset 0 -5px 8px rgba(25,28,34,.14);
+  animation: roll-turn 2.35s linear .12s both;
 }
-.printer-head::before, .printer-head::after {
-  content: ''; position: absolute; top: 9px; width: 8px; height: 8px;
-  border-radius: 2px; background: #08090B; box-shadow: inset 1px 1px 0 rgba(255,255,255,.1);
+.roll-spool::before, .roll-spool::after {
+  content: ''; position: absolute; top: 0; width: 24px; height: 48px; border-radius: 50%;
 }
-.printer-head::before { left: 13px; }
-.printer-head::after { right: 13px; }
-.printer-slot {
-  position: absolute; left: 7%; right: 7%; bottom: 4px; height: 9px;
-  border-radius: 6px; background: #030405; box-shadow: inset 0 3px 4px rgba(0,0,0,.72), 0 1px 0 rgba(255,255,255,.1);
+.roll-spool::before {
+  left: -7px; background: linear-gradient(90deg, #c8c3b9, #f8f5ee 72%);
+  box-shadow: -4px 3px 9px rgba(0,0,0,.2), inset 2px 0 2px rgba(255,255,255,.7);
 }
-.printer-light {
-  position: absolute; z-index: 2; right: 28px; top: 7px; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--accent); box-shadow: 0 0 7px var(--accent);
-  animation: printer-blink .18s steps(2, end) 12;
+.roll-spool::after {
+  right: -7px;
+  background: radial-gradient(circle, #565B63 0 12%, #bdb8ae 14% 25%, #ece8df 27% 62%, #c7c2b8 64% 100%);
+  box-shadow: 5px 3px 10px rgba(0,0,0,.24), inset -2px 0 3px rgba(25,28,34,.12);
 }
-.receipt-stage { position: relative; margin: -2px 10px 0; filter: drop-shadow(7px 12px 10px rgba(0,0,0,.38)); }
+.roll-core {
+  position: absolute; z-index: 2; right: -1px; top: 19px; width: 10px; height: 10px;
+  border-radius: 50%; background: #454A52; box-shadow: inset 1px 1px 2px rgba(0,0,0,.45);
+}
+.receipt-stage { position: relative; margin: 0 18px; filter: drop-shadow(7px 12px 10px rgba(0,0,0,.38)); }
 .receipt-paper {
   position: relative; z-index: 2; transform-origin: top center;
-  clip-path: inset(0 0 100% 0); animation: receipt-feed 2.2s steps(22, end) .18s both, receipt-settle .55s ease-out 2.45s both;
+  clip-path: inset(0 0 100% 0); animation: receipt-unroll 2.35s cubic-bezier(.18,.72,.2,1) .12s both, receipt-settle .55s ease-out 2.5s both;
 }
-.receipt-curl {
-  position: absolute; z-index: 3; left: 1px; right: 1px; top: -1px; height: 18px;
-  border-radius: 0 0 48% 48%;
-  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, #d7d2c8 42%, var(--paper) 76%, rgba(25,28,34,.16) 100%);
-  box-shadow: 0 5px 7px rgba(0,0,0,.22);
-  animation: receipt-edge 2.2s steps(22, end) .18s both, curl-away .22s ease-out 2.42s forwards;
+.receipt-rolled-edge {
+  position: absolute; z-index: 3; left: -1px; right: -1px; top: -2px; height: 24px;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(180deg, #fff 0%, #d5d0c6 38%, var(--paper) 70%, #beb9af 100%);
+  box-shadow: 0 8px 9px rgba(0,0,0,.24), inset 0 -4px 5px rgba(25,28,34,.12);
+  transform-origin: center top;
+  animation: rolled-edge-drop 2.35s cubic-bezier(.18,.72,.2,1) .12s both;
 }
-@keyframes printer-blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
-@keyframes receipt-feed {
+@keyframes roll-turn {
+  0% { background-position: 0 0, 0 0; transform: rotate(-1deg); }
+  45% { transform: rotate(.7deg); }
+  100% { background-position: 80px 0, 0 0; transform: none; }
+}
+@keyframes receipt-unroll {
   0% { clip-path: inset(0 0 100% 0); }
   100% { clip-path: inset(0 0 0 0); }
 }
-@keyframes receipt-edge {
-  0% { top: -1px; transform: rotateX(0deg) scaleY(.82); }
-  100% { top: calc(100% - 18px); transform: rotateX(-34deg) scaleY(1); }
+@keyframes rolled-edge-drop {
+  0% { top: -2px; transform: rotateX(0deg) scaleY(.72); }
+  100% { top: calc(100% - 23px); transform: rotateX(-42deg) scaleY(1); }
 }
-@keyframes curl-away { to { opacity: 0; transform: rotateX(-65deg) translateY(5px); } }
 @keyframes receipt-settle {
   0% { transform: rotateX(-2.5deg) translateY(-2px); }
   65% { transform: rotateX(1deg) translateY(1px); }
@@ -404,9 +411,9 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: 10px; letter-spacing: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .die.rolling, .die.settled, .brand-die, .chips.ticking .chip, .confetti i, .phase, .receipt, .receipt-paper, .receipt-curl, .printer-light { animation: none; }
+  .die.rolling, .die.settled, .brand-die, .chips.ticking .chip, .confetti i, .phase, .receipt, .receipt-paper, .receipt-rolled-edge, .roll-spool { animation: none; }
   .receipt-paper { clip-path: none; }
-  .receipt-curl { display: none; }
+  .receipt-rolled-edge { top: calc(100% - 23px); transform: rotateX(-42deg); }
   .progress.indeterminate > i { animation: none; width: 100%; }
   .bonus > i { animation-duration: 10s; } /* the bar is information, keep it */
 }
@@ -775,7 +782,10 @@ body:has(.home-shell)::after {
   .player { gap: 8px; }
   .player .games { display: none; }
   .code-plate { padding: 18px 10px; font-size: 26px; letter-spacing: 6px; }
-  .receipt-printer { margin-top: 20px; padding-inline: 0; }
+  .receipt-roll { margin-top: 20px; padding-inline: 0; }
+  .roll-spool { width: calc(100% - 28px); height: 42px; }
+  .roll-spool::before, .roll-spool::after { height: 42px; }
+  .roll-core { top: 16px; }
   .receipt-stage { margin-inline: 4px; }
   .receipt-card { padding: 20px 17px 28px; }
   .receipt-src { font-size: 9px; overflow-wrap: anywhere; }
