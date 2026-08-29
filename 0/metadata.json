@@ -1,0 +1,85 @@
+{
+  "cli_version": "0.10.3",
+  "checkpoint_id": "01M170FNEJN8E04YB5DVD3YW7C",
+  "session_id": "0d1e84e2-39fa-4cab-82e1-be1c54f9b66a",
+  "strategy": "manual-commit",
+  "created_at": "2026-08-29T14:58:53.469354359Z",
+  "branch": "home-unify",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "experiments/deez-win/static/app.css",
+    "experiments/deez-win/templates/home.html",
+    "experiments/deez-win/templates/lobby.html"
+  ],
+  "agent": "Claude Code",
+  "model": "claude-fable-5",
+  "turn_id": "9ea0e065efdf",
+  "checkpoint_transcript_start": 791,
+  "transcript_lines_at_start": 791,
+  "compact_transcript_start": 104,
+  "token_usage": {
+    "input_tokens": 458,
+    "cache_creation_tokens": 20945,
+    "cache_read_tokens": 2201706,
+    "output_tokens": 6332,
+    "api_call_count": 7
+  },
+  "skill_events_version": 1,
+  "skill_events": [
+    {
+      "id": "claude-skill-toolu_0181PkTgKLW7G2Ab8vJktEvW",
+      "event_type": "tool_invocation",
+      "skill": {
+        "name": "frontend-design:frontend-design"
+      },
+      "source": {
+        "agent": "claude-code",
+        "signal": "skill_tool_use",
+        "confidence": "explicit"
+      },
+      "turn_id": "07321fe7486d",
+      "transcript_anchor": {
+        "unit": "line",
+        "start": 198,
+        "end": 199,
+        "entry_ids": [
+          "be6063ff-a8a1-4f58-9d9b-5757bb3fede3"
+        ],
+        "tool_use_id": "toolu_0181PkTgKLW7G2Ab8vJktEvW"
+      },
+      "native": {
+        "tool_name": "Skill",
+        "tool_use_id": "toolu_0181PkTgKLW7G2Ab8vJktEvW"
+      },
+      "collapse": {
+        "target": "tool_pair",
+        "label": "Skill: frontend-design:frontend-design",
+        "default_collapsed": true
+      }
+    }
+  ],
+  "session_metrics": {
+    "turn_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-08-29T14:58:53.26258589Z",
+    "agent_lines": 592,
+    "agent_removed": 243,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 592,
+    "total_lines_changed": 835,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
