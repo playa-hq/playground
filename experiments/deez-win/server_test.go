@@ -73,8 +73,18 @@ func TestHomeHasOnlyPlayAction(t *testing.T) {
 	if !strings.Contains(html, `action="/play"`) || !strings.Contains(html, ">Play</span>") {
 		t.Fatal("home Play action does not lead to the lobby page")
 	}
-	if !strings.Contains(html, `/dice-d6.png`) || !strings.Contains(html, "6 SIDES") || strings.Contains(html, "d12") {
+	if !strings.Contains(html, `/dice-d6.png`) || strings.Contains(html, "6 SIDES") || strings.Contains(html, "d12") {
 		t.Fatal("home does not use the six-sided die identity")
+	}
+	for _, removed := range []string{"A data-backed party game", "Roll for the order", "↗"} {
+		if strings.Contains(html, removed) {
+			t.Fatalf("home still contains removed copy %q", removed)
+		}
+	}
+	for _, want := range []string{"Trivia for friends", "Pick a topic. Outsmart your friends.", "DATA BY CALA", "IMAGES &amp; SOUND BY FAL.AI"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("home is missing %q", want)
+		}
 	}
 	if strings.Count(html, `/home.js`) != 1 {
 		t.Fatal("shared button motion must load exactly once")

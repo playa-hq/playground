@@ -7,14 +7,14 @@
 
   <section class="hero-big">
     <div class="home-copy">
-      <p class="home-kicker">A data-backed party game</p>
+      <p class="home-kicker">Trivia for friends</p>
       <!-- One span per letter: each springs in on its own beat and boops on hover. -->
       <h1 class="wordmark" aria-label="deez.win">
         {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
       </h1>
-      <p class="hero-line">Roll for the order. Pick a world. Prove what you know.</p>
+      <p class="hero-line">Pick a topic. Outsmart your friends.</p>
       <form method="get" action="/play" class="play-strip">
-        <button class="home-play magnet"><span>Play</span><i aria-hidden="true">↗</i></button>
+        <button class="home-play magnet"><span>Play</span></button>
       </form>
       <p class="home-meta">earn aura&nbsp;&nbsp;·&nbsp;&nbsp;dodge larp&nbsp;&nbsp;·&nbsp;&nbsp;facts with receipts</p>
     </div>
@@ -22,7 +22,6 @@
     <div class="home-art" aria-hidden="true">
       <div class="die-orbit"></div>
       <img src="/dice-d6.png" alt="" width="640" height="640">
-      <span class="die-note note-top">6 SIDES</span>
       <span class="die-note note-bottom">ONE WINNER</span>
     </div>
   </section>
