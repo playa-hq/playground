@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -95,6 +97,7 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 		MyRank:       rankOf(s.board, u),
 		Lobbies:      lobbies,
 		PlayerCounts: []int{2, 3, 4},
+		Letters:      strings.Split("DEEZ.WIN", ""),
 		GoogleURL:    s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
 		LoginMsg:     msg,
 	}
@@ -187,6 +190,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, msg string) {
 
 func (s *Server) renderRoom(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
 	v := s.buildRoomView(room, me, flash)
+	v.FullPage = true
 	v.Suggestions = s.suggestions(r.Context(), room)
 	render(w, http.StatusOK, roomTmpl, "layout", v)
 }
@@ -250,6 +254,7 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	room.mu.Lock()
+	room.tick()
 	switch {
 	case room.Phase != PhaseTopic:
 		room.mu.Unlock()
@@ -261,33 +266,113 @@ func (s *Server) handleTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	room.Topic = topic
+	room.Notice = ""
+	// Resolution is model-backed and slow (35–60s live), so it runs off the
+	// request path; the room polls its way into the sub-topic phase.
+	room.Phase = PhaseBuilding
+	room.Status = "Resolving “" + topic + "” to real entities…"
+	room.Loads = nil
 	room.mu.Unlock()
 
-	subs := s.resolveSubTopics(r.Context(), room, topic)
-	if len(subs) == 0 {
-		room.mu.Lock()
-		room.Topic = ""
+	go s.resolveTopicAsync(room, u.ID, topic)
+	s.renderPanel(w, r, room, u.ID, "")
+}
+
+func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+	defer cancel()
+
+	room.progress("topic", "Topic → entities", StepRunning, "asking the graph", 0, 0)
+	// Cover art has a slot in the graph so the round's shape is visible;
+	// the fal model is not chosen yet, so it never starts.
+	room.progress("cover", "Cover art · fal", StepPending, "model not chosen yet", 0, 0)
+
+	subs := s.resolveSubTopics(ctx, room, topic)
+
+	room.mu.Lock()
+	if room.Phase != PhaseBuilding || room.Topic != topic {
 		room.mu.Unlock()
-		s.renderPanel(w, r, room, u.ID, "Nothing playable for that topic. Try another.")
 		return
 	}
-
+	room.Status = ""
+	if len(subs) == 0 {
+		room.Topic = ""
+		room.graph = nil
+		room.Phase = PhaseTopic
+		room.Notice = "The graph has nothing playable for “" + topic + "”. Try a set of companies."
+		room.mu.Unlock()
+		room.progress("topic", "", StepFailed, "nothing playable", 0, 0)
+		return
+	}
+	room.mu.Unlock()
+	room.progress("axes", "Axes ranked", StepDone, fmt.Sprintf("%d shared axes", len(subs)), 0, 0)
+	go s.prefetchValues(room, subs)
 	room.mu.Lock()
 	room.SubTopics = subs
 	room.Phase = PhaseSubTopics
 	// With two players nobody follows the topic picker, so their own choice
 	// stands and the round builds immediately.
 	if room.NextSubTopicPicker() == "" {
-		room.SubTopics[0].ClaimedBy = u.ID
+		room.SubTopics[0].ClaimedBy = picker
 		room.Phase = PhaseBuilding
+		room.Status = "Pulling sourced values…"
 	}
 	building := room.Phase == PhaseBuilding
 	room.mu.Unlock()
 
 	if building {
-		go s.startQuiz(room)
+		s.startQuiz(room)
 	}
-	s.renderPanel(w, r, room, u.ID, "")
+}
+
+// prefetchValues pulls every ranked axis for every entity as soon as the
+// axes exist, so by the time the last player claims, the values are cached
+// and the round builds instantly. Each claimed axis gets its own step in
+// the loading graph, filled from the cache as entities come in.
+func (s *Server) prefetchValues(room *Room, axes []SubTopic) {
+	g := room.graph
+	if g == nil {
+		return
+	}
+	total := len(g.Entities)
+	room.progress("values", "Values · all axes", StepRunning, "one call per entity", 0, total)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	defer cancel()
+	g.Fetch(ctx, s.cala, axes, func(done, total int) {
+		room.progress("values", "", StepRunning, fmt.Sprintf("%d/%d entities", done, total), done, total)
+		s.refreshAxisSteps(room)
+	})
+	have := len(g.Details())
+	state := StepDone
+	if have < 2 {
+		state = StepFailed
+	}
+	room.progress("values", "", state, fmt.Sprintf("%d of %d entities answered", have, total), have, total)
+	s.refreshAxisSteps(room)
+}
+
+// refreshAxisSteps upserts one step per claimed axis with how many entities
+// hold a value for it. Cheap: it only reads the cache.
+func (s *Server) refreshAxisSteps(room *Room) {
+	room.mu.Lock()
+	claimed := room.SubTopicsClaimed()
+	g := room.graph
+	room.mu.Unlock()
+
+	for _, st := range claimed {
+		key := "axis:" + st.Key
+		if g == nil {
+			room.progress(key, "Values · "+st.Label, StepDone, "offline fixtures", 0, 0)
+			continue
+		}
+		have, total := g.Have(st), len(g.Entities)
+		state := StepRunning
+		if have >= total || have >= 2 && g.fetchedAll() {
+			state = StepDone
+		}
+		room.progress(key, "Values · "+st.Label, state, fmt.Sprintf("%d/%d entities", have, total), have, total)
+	}
 }
 
 func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
@@ -331,9 +416,11 @@ func (s *Server) handleSubTopic(w http.ResponseWriter, r *http.Request) {
 	building := room.NextSubTopicPicker() == ""
 	if building {
 		room.Phase = PhaseBuilding
+		room.Status = "Pulling sourced values…"
 	}
 	room.mu.Unlock()
 
+	go s.refreshAxisSteps(room)
 	if building {
 		go s.startQuiz(room)
 	}
@@ -419,43 +506,66 @@ func (s *Server) suggestions(ctx context.Context, room *Room) []string {
 	if room.Phase != PhaseTopic {
 		return nil
 	}
+	if s.cala.Enabled() {
+		return CalaTopicSuggestions()
+	}
 	return OfflineTopicSuggestions()
+}
+
+// CalaTopicSuggestions are set-shaped prompts: the query endpoint resolves a
+// set to its members, which is what a comparison question needs.
+func CalaTopicSuggestions() []string {
+	return []string{"Big Tech", "Spanish startups", "European banks", "car makers", "AI labs"}
 }
 
 func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string) []SubTopic {
 	if !s.cala.Enabled() {
-		return offlineSubTopics(topic)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-
-	entities, err := s.cala.SearchEntities(ctx, topic, 5)
-	if err != nil || len(entities) == 0 {
-		return offlineSubTopics(topic)
-	}
-	room.TopicEntity = entities[0].ID
-
-	in, err := s.cala.Introspect(ctx, entities[0].ID)
-	if err != nil {
-		return offlineSubTopics(topic)
-	}
-	if subs := SubTopics(in, 5); len(subs) > 0 {
+		subs := offlineSubTopics(topic)
+		room.progress("topic", "", StepDone, fmt.Sprintf("%d fixture entities", len(offlineEntitiesFor(topic))), 0, 0)
 		return subs
 	}
-	return offlineSubTopics(topic)
+
+	start := time.Now()
+	g, err := s.cala.BuildTopicGraph(ctx, topic, func(done, total int) {
+		room.progress("topic", "", StepRunning, fmt.Sprintf("introspecting %d/%d", done, total), done, total)
+	})
+	if err != nil {
+		log.Printf("cala: topic %q: %v", topic, err)
+		room.progress("topic", "", StepFailed, "the graph did not answer", 0, 0)
+		return nil
+	}
+	room.progress("topic", "", StepDone, fmt.Sprintf("%d entities in %s", len(g.Entities), time.Since(start).Round(time.Second)), 0, 0)
+	subs := g.SubTopics(5)
+	log.Printf("cala: topic %q → %d entities, %d axes in %s", topic, len(g.Entities), len(subs), time.Since(start).Round(time.Millisecond))
+	if len(subs) == 0 {
+		return nil
+	}
+	room.mu.Lock()
+	room.graph = g
+	if len(g.Entities) > 0 {
+		room.TopicEntity = g.Entities[0].ID
+	}
+	room.mu.Unlock()
+	return subs
 }
 
 // startQuiz builds questions off the request path so the picking player is not
 // left waiting on Cala; the room polls its way into the quiz phase.
 func (s *Server) startQuiz(room *Room) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
+	room.progress("questions", "Questions", StepRunning, "", 0, 0)
 	qs, err := s.buildQuestions(ctx, room)
+	if err != nil || len(qs) == 0 {
+		room.progress("questions", "", StepFailed, "no grounded questions", 0, 0)
+	} else {
+		room.progress("questions", "", StepDone, fmt.Sprintf("%d with sources", len(qs)), 0, 0)
+	}
 
 	room.mu.Lock()
 	defer room.mu.Unlock()
+	room.Status = ""
 
 	if err != nil || len(qs) == 0 {
 		room.Error = "Could not build a round from that topic. Start another game."

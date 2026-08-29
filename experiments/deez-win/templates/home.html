@@ -1,86 +1,62 @@
 {{define "body"}}
-<div class="topbar">
-  <div class="brand-block">
-    <a class="brand-lockup" href="/" aria-label="deez.win home">
-      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-        <path d="M8 15.5 22 7l14 8.5v15L22 38 8 30.5Z" />
-        <path d="m13.5 18.75 8.5 5 8.5-5M22 23.75V34" />
-        <circle cx="22" cy="14.5" r="2.5" />
-      </svg>
-      <span class="brand-wordmark">deez<span>.win</span></span>
-    </a>
-    <p class="subtitle">v0.1 — a quiz built from a verified entity graph</p>
-  </div>
+<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="topbar home-top">
+  <span></span>
   <div class="row">
-    <button type="button" class="ghost small" data-mute>🔊</button>
+    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
     {{with .User}}<span class="tag {{if not .IsAnon}}live{{end}}">{{.DisplayName}}{{if .IsAnon}} · guest{{end}}</span>{{end}}
   </div>
 </div>
 
 {{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
 
-<div class="grid">
-  <div class="stack">
-    <div class="card stack">
-      <form method="post" action="/rooms" class="stack">
-        <div>
-          <label class="field">Players</label>
-          <!-- The stepper is three radios styled as a segmented control: no JS,
-               and the chosen value posts with the form like any other field. -->
-          <div class="stepper" role="radiogroup" aria-label="Number of players">
-            {{range $n := .PlayerCounts}}
-              <label class="seg">
-                <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
-                <span>{{$n}}</span>
-              </label>
-            {{end}}
-            <span class="muted small">dice decide who picks the topic</span>
-          </div>
-        </div>
-        <div class="row wrap">
-          <button class="primary" name="public" value="0">Create a lobby</button>
-          <button name="public" value="1">Create public lobby</button>
-        </div>
-      </form>
-    </div>
+<section class="hero-big">
+  <!-- One span per letter: each springs in on its own beat and boops on hover. -->
+  <h1 class="wordmark" aria-label="deez.win">
+    {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
+  </h1>
+  <div class="sparkles" aria-hidden="true"></div>
+  <p class="hero-line">2–4 players · dice decide · answers with receipts</p>
 
-    <div class="card stack">
-      <label class="field">Join game</label>
-      <form method="post" action="/join" class="row">
-        <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
-               autocomplete="off" required pattern="[A-Za-z0-9]{4}">
-        <button>Join</button>
-      </form>
+  <form method="post" action="/rooms" class="play-strip">
+    <div class="stepper" role="radiogroup" aria-label="Number of players">
+      {{range $n := .PlayerCounts}}
+        <label class="seg">
+          <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
+          <span>{{$n}}</span>
+        </label>
+      {{end}}
     </div>
+    <button class="primary big magnet" name="public" value="0"><span>Play</span></button>
+    <button class="ghost" name="public" value="1">Public lobby</button>
+  </form>
 
-    <!-- Polled on its own so a lobby appearing elsewhere shows up here without
-         touching the rest of the page. -->
-    <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
-      {{template "lobbies" .}}
-    </div>
+  <form method="post" action="/join" class="join-strip">
+    <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
+           autocomplete="off" required pattern="[A-Za-z0-9]{4}" aria-label="Room code">
+    <button>Join</button>
+  </form>
+</section>
+
+<div class="grid3">
+  <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
+    {{template "leaderboard" .}}
   </div>
-
-  <div class="stack">
-    <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
-      {{template "leaderboard" .}}
-    </div>
-    <div class="card" id="account">{{template "account" .}}</div>
-    <div class="card">
-      <label class="field">How it works</label>
-      <ol class="small muted tight">
-        <li>Everyone rolls. Highest picks the topic.</li>
-        <li>The rest each claim one of the top 5 sub-topics.</li>
-        <li>Questions come from those axes — with sources.</li>
-      </ol>
-    </div>
+  <!-- Polled on its own so a lobby appearing elsewhere shows up here without
+       touching the rest of the page. -->
+  <div class="card" hx-get="/lobbies" hx-trigger="every 5s" hx-target="this" hx-swap="innerMorph">
+    {{template "lobbies" .}}
   </div>
+  <div class="card" id="account">{{template "account" .}}</div>
 </div>
 
-<p class="footer">CALA DATA &amp; SHOWCASED BY FAL.AI</p>
+<p class="footer">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>
+<script src="/home.js"></script>
 {{end}}
 
 {{define "lobbies"}}
-<label class="field">Or public lobbies</label>
+<label class="field">Public lobbies</label>
 {{if .Lobbies}}
   {{range .Lobbies}}
     <div class="lobby-item">
@@ -90,7 +66,7 @@
     </div>
   {{end}}
 {{else}}
-  <p class="muted small tight">No public lobbies right now. Create one and it shows up here.</p>
+  <p class="muted small tight">Nobody is waiting right now. Make a public lobby and it shows up here.</p>
 {{end}}
 {{end}}
 
@@ -100,11 +76,11 @@
   <p class="small">Signed in as <strong>{{or .User.Email .User.DisplayName}}</strong>.</p>
   <form method="post" action="/logout"><button class="ghost">Log out</button></form>
 {{else}}
-  <p class="small muted">Playing as a guest. Sign in to keep your score.</p>
+  <p class="small muted">You're a guest. Sign in to keep your score on the board.</p>
   <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
     <input type="email" name="email" placeholder="you@example.com" class="plain" required>
     <div class="row wrap">
-      <button>Email link</button>
+      <button>Email me a link</button>
       <a class="btn" href="{{.GoogleURL}}">Google</a>
     </div>
   </form>
@@ -113,7 +89,7 @@
 {{end}}
 
 {{define "leaderboard"}}
-<label class="field">Leaderboard</label>
+<label class="field">All-time</label>
 {{if .Top}}
   {{range $i, $s := .Top}}
     <div class="player{{if and $.User (eq $s.PlayerID $.User.ID)}} me{{end}}">

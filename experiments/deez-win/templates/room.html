@@ -1,20 +1,15 @@
 {{define "body"}}
 <div class="topbar">
-  <div class="brand-block">
-    <a class="brand-lockup" href="/" aria-label="deez.win home">
-      <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-        <path d="M8 15.5 22 7l14 8.5v15L22 38 8 30.5Z" />
-        <path d="m13.5 18.75 8.5 5 8.5-5M22 23.75V34" />
-        <circle cx="22" cy="14.5" r="2.5" />
-      </svg>
-      <span class="brand-wordmark">deez<span>.win</span></span>
-    </a>
-    <h1 class="room-code">{{.Room.Code}}</h1>
-    <p class="subtitle">{{or .Room.Topic "no topic yet"}} · {{len .Room.Players}}/{{.Room.MaxPlayer}} players
-      {{if not .CalaEnabled}}<span class="tag warn">offline data</span>{{end}}</p>
+  <div>
+    <a class="brand small-brand" href="/"><span class="brand-die" aria-hidden="true"></span>DEEZ.WIN</a>
+    <div class="room-head">
+      <span class="pixel room-code">{{.Room.Code}}</span>
+      <span class="muted small">{{len .Room.Players}}/{{.Room.MaxPlayer}} players</span>
+      {{if not .CalaEnabled}}<span class="tag warn">offline data</span>{{else}}<span class="tag live">live graph</span>{{end}}
+    </div>
   </div>
   <div class="row">
-    <button type="button" class="ghost small" data-mute>🔊</button>
+    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
     <a class="btn ghost small" href="/">Leave</a>
   </div>
 </div>
@@ -45,7 +40,7 @@
   </div>
 </div>
 
-<p class="footer">CALA DATA &amp; SHOWCASED BY FAL.AI</p>
+<p class="footer">DATA BY CALA · SOUND BY FAL.AI · NO MODEL DECIDES WHAT IS TRUE</p>
 {{end}}
 
 {{define "roster"}}
@@ -57,6 +52,32 @@
     {{if eq .ID $.Picking}}<span class="tag live">picking</span>{{end}}
     {{if .IsHost}}<span class="tag">host</span>{{end}}
     <span class="score">{{.Score}}</span>
+  </div>
+{{end}}
+{{if .Room.Loads}}
+  <div class="topic-strip">
+    <label class="field">Loading</label>
+    <ol class="pipe">
+      {{range .Room.Loads}}
+        <li class="step {{.State}}">
+          <span class="node" aria-hidden="true"></span>
+          <span class="step-body">
+            <span class="step-label">{{.Label}}<span class="muted small step-time">{{.Elapsed}}</span></span>
+            {{with .Detail}}<span class="small muted">{{.}}</span>{{end}}
+            {{if gt .Total 0}}<span class="step-bar"><i style="width:{{.Pct}}%"></i></span>{{end}}
+          </span>
+        </li>
+      {{end}}
+    </ol>
+  </div>
+{{end}}
+{{with .Room.Topic}}
+  <div class="topic-strip">
+    <label class="field">Topic</label>
+    <div class="pixel topic-name">{{.}}</div>
+    {{if $.Entities}}
+      <div class="chips">{{range $.Entities}}<span class="chip">{{.}}</span>{{end}}</div>
+    {{end}}
   </div>
 {{end}}
 {{end}}

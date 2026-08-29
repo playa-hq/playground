@@ -1,6 +1,6 @@
 # deez.win
 
-**Started:** 2026-08-29 · **Status:** iteration 0 · **Owner:** _tbd_ · **Live:** https://deez.win
+**Started:** 2026-08-29 · **Status:** iteration 1 · **Owner:** _tbd_ · **Live:** https://deez.win
 
 A 2–4 player quiz where the questions are built from a **verified entity graph**
 rather than written by a language model. Dice decide who picks the topic;
@@ -77,8 +77,78 @@ remain). Entering a room is therefore a plain form POST with a `303` redirect,
 which is better anyway: the URL is correct, refresh works, and it degrades to a
 working app with JavaScript switched off.
 
-The one JS file, `static/sfx.js`, only listens for `htmx:after:swap` and makes
-noises. It is not load-bearing.
+Two JS files, neither load-bearing: `static/sfx.js` listens for
+`htmx:after:swap` and makes noises; `static/home.js` does the home page's
+sparkles, magnetic button and press-squish. Both respect `prefers-reduced-motion`.
+
+## Cala, for real
+
+The graph is company-, people- and finance-shaped (SEC filings, registries,
+credit reports), so a topic is a **set of entities** — "Big Tech", "Spanish
+startups", "European banks" — not a trivia category. The pipeline:
+
+1. `POST /v1/knowledge/query` resolves the topic to entities (fuzzy
+   `GET /v1/entities?name=` fills in when the topic is a single thing).
+2. Every entity is introspected in parallel; only axes shared by **≥3** of them
+   become sub-topics, ranked by how good a quiz question they make
+   (headcount and founding date first, then revenue-style metrics, then
+   relationships like headquarters or industry, then free-text properties).
+3. On build, one `POST /v1/entities/{id}` per entity fetches exactly the
+   claimed axes. Each value arrives with its own source, which is what the
+   receipt shows. Time-series metrics use the latest point.
+
+Numbers become higher/lower; dates become "founded first"; strings and
+relationships become multiple choice with the *other entities' values* as
+distractors, so every option is a real answer to the same question.
+
+Check coverage for a topic before putting it on stage:
+
+```bash
+CALA_API_KEY=… go run . -probe "Spanish fintechs"
+```
+
+It prints the entities, the axes offered, and the questions a round would ask,
+with sources. This is the tool behind kill criterion #1.
+
+Set the key without it touching a shell history, transcript or git:
+
+```bash
+./ops/set-cala-key          # hidden prompt → ../../.env and the VPS, restarts the service
+./ops/set-cala-key --local  # just .env
+```
+
+`cala_test.go` runs the whole pipeline against a mock of the documented
+response shapes, so parsing is verified without a key.
+
+**Measured live (2026-08-29):** `knowledge/query` takes 35–60s on a fresh
+set and ~4s once Cala has seen it; introspection ~5s per entity; a value
+fetch under 1s — but **`POST /entities` allows roughly five calls a minute**
+and a second concurrent query 429s. So:
+
+- Resolution runs **off the request path** — the room sits in the building
+  screen with a status line and polls its way forward.
+- Topic graphs are **cached per process**, and the suggested topics are
+  **warmed at startup**, sequentially, so the demo topics answer instantly.
+- A topic keeps **six entities**, and their values are fetched **one call
+  per entity, all five axes at once, serially**, starting the moment the
+  axes are ranked — while players are still claiming. Claims read from the
+  cache, so the round builds instantly once the last pick lands.
+- 429s back off in 10s steps, up to four tries.
+
+## The loading graph
+
+Everything the round waits on is a `LoadStep` on the room — topic resolution,
+axes, values per entity, one line per claimed axis, and a slot for fal cover
+art (pending until a model is chosen). Goroutines report with one call,
+`room.progress(key, …)`, which upserts by key; the roster panel draws the
+list as a rail with a node per step, and it fills in on the right while
+players pick on the left. The dice hold for three seconds after the last one
+lands, so the roll is seen and background work has a head start.
+
+"Big Tech companies" resolves to Apple, Microsoft, Amazon, Meta, NVIDIA and
+offers *Employee count · Founding date · Revenue · Net income · Industry*, with
+SEC 10-Q, Revelio Labs and GLEIF as sources. Fuzzy `entities?name=` is only a
+fallback: "car maker" finds "MUSCLE MAKER, INC.".
 
 ## Run it
 
@@ -106,6 +176,24 @@ and no key. `scripts/gen-audio.sh` generates richer fal.ai chiptune versions int
 Sounds are **generated once and committed**, not called at runtime — a game loop
 cannot wait on an inference round-trip, and this way a round costs nothing.
 
+## The look
+
+The home page is the wordmark: DEEZ.WIN as big as the container allows, one
+span per letter so each springs in on its own beat, shimmers, and boops on
+hover — the Josh Comeau idiom (overshoot, person-triggered, never looping for
+its own sake). Sparkles pop around it, gradient orbs drift behind, and the
+Play button leans toward the cursor. No copy explains the mechanics there,
+so the game type can change without touching the front door.
+
+An arcade cabinet that prints receipts. Press Start 2P for anything the
+cabinet says (codes, scores, headers), JetBrains Mono for anything a person
+reads. Mint means live/correct, gold means points, and the **receipt** — the
+answer reveal and the end-of-round review — is the one paper-coloured thing on
+screen, because the proof should look different from the play. A ten-second
+gold bar drains at the same rate the server pays the speed bonus; keys 1–4
+answer; the entities the graph resolved are shown as chips so players see the
+topic became something concrete.
+
 ## Design decisions worth knowing
 
 **Cala decides what is true; the model only decides how it reads.** A numeric
@@ -125,10 +213,15 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
 
 ## Known gaps
 
-- **The UI has not been checked in a browser.** The full game loop is verified
-  end to end over HTTP, and every htmx attribute used was checked against the
-  htmx 4.0 source rather than the docs — but no human or headless browser has
-  actually rendered a frame. Do that first.
+- **The UI has been rendered headlessly (home, axes, quiz, results) but not
+  played by hand in a real browser.** htmx swaps, the bonus bar restart and
+  the keyboard answers still want a human check.
+- **A typed topic costs up to a minute the first time.** Cached and warmed
+  topics are instant; anything new sits on the building screen. Whether
+  players tolerate that is a playtest question, and it presses on the
+  four-minute kill criterion.
+- Kill criterion #1 (coverage) is now measurable with `-probe` but not yet
+  measured across "topics players naturally type" — only on curated sets.
 - **`htmx.org@4.0.0` is not the npm `latest` tag yet** (that still points at
   2.0.10), so the version in the CDN URL is pinned deliberately. Don't "fix" it
   to a range.
