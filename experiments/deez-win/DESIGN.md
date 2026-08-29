@@ -30,7 +30,7 @@ without competing with the fact, source and answer.
 | Verify/action | `--mint` | primary actions, focus, sourced facts |
 | Score/signal | `--sun` | scores, room identifiers, warnings |
 | Error | `--coral` | invalid or incorrect states |
-| Display | Space Grotesk | logo, question prompt, headings |
+| Display | Excalifont | logo, question prompt, headings |
 | Reading/data | DM Mono | controls, values, body copy |
 
 ## Rules
@@ -42,5 +42,5 @@ without competing with the fact, source and answer.
 - Facts and citations get a mint left rule, never a celebratory treatment. They
   are evidence, not a reward.
 - The topographic background stays low contrast and must never carry text.
-- Keep operational copy in DM Mono; reserve Space Grotesk for hierarchy and
+- Keep operational copy in DM Mono; reserve Excalifont for hierarchy and
   questions that people need to read quickly.
