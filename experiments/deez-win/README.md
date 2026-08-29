@@ -77,8 +77,9 @@ remain). Entering a room is therefore a plain form POST with a `303` redirect,
 which is better anyway: the URL is correct, refresh works, and it degrades to a
 working app with JavaScript switched off.
 
-The one JS file, `static/sfx.js`, only listens for `htmx:after:swap` and makes
-noises. It is not load-bearing.
+Two JS files, neither load-bearing: `static/sfx.js` listens for
+`htmx:after:swap` and makes noises; `static/home.js` does the home page's
+sparkles, magnetic button and press-squish. Both respect `prefers-reduced-motion`.
 
 ## Cala, for real
 
@@ -176,6 +177,13 @@ Sounds are **generated once and committed**, not called at runtime — a game lo
 cannot wait on an inference round-trip, and this way a round costs nothing.
 
 ## The look
+
+The home page is the wordmark: DEEZ.WIN as big as the container allows, one
+span per letter so each springs in on its own beat, shimmers, and boops on
+hover — the Josh Comeau idiom (overshoot, person-triggered, never looping for
+its own sake). Sparkles pop around it, gradient orbs drift behind, and the
+Play button leans toward the cursor. No copy explains the mechanics there,
+so the game type can change without touching the front door.
 
 An arcade cabinet that prints receipts. Press Start 2P for anything the
 cabinet says (codes, scores, headers), JetBrains Mono for anything a person

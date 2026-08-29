@@ -97,6 +97,7 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 		MyRank:       rankOf(s.board, u),
 		Lobbies:      lobbies,
 		PlayerCounts: []int{2, 3, 4},
+		Letters:      strings.Split("DEEZ.WIN", ""),
 		GoogleURL:    s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
 		LoginMsg:     msg,
 	}
