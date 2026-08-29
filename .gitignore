@@ -1,0 +1,41 @@
+# --- secrets ---
+.env
+.env.local
+*.local.json
+!.*.example
+
+# --- entire (personal overrides) ---
+.entire/settings.local.json
+
+# --- aikido ---
+.aikidotmp/
+
+# --- generated media / experiment output ---
+out/
+outputs/
+assets/generated/
+*.mp4
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wav
+*.mp3
+!docs/**/*.png
+
+# --- deps & build ---
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.uv/
+
+# --- editors / os ---
+.DS_Store
+.idea/
+*.swp
