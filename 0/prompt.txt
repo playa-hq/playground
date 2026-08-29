@@ -1,0 +1,1 @@
+after signing in, and pressing on profile on the play lobby, make sure i can unclick from my username anywhere i press, not just on my username again, push to main, also push the dice favicon to main
