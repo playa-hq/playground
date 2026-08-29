@@ -89,3 +89,13 @@
   const btn = document.querySelector('[data-mute]');
   if (btn) btn.textContent = muted ? '🔇' : '🔊';
 })();
+
+/* Keyboard answers: 1–4 press the matching choice. A quiz is faster on keys,
+ * and the speed bonus rewards that. */
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = parseInt(e.key, 10);
+  if (!n) return;
+  const btn = document.querySelector(`.choice[data-key="${n - 1}"]:not(:disabled)`);
+  if (btn) { btn.click(); e.preventDefault(); }
+});

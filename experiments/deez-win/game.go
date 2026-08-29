@@ -28,6 +28,7 @@ const (
 	SubTopicNumeric  SubTopicKind = "numeric"
 	SubTopicRelation SubTopicKind = "relation"
 	SubTopicProperty SubTopicKind = "property"
+	SubTopicMetric   SubTopicKind = "metric" // a time series (revenue, headcount…); latest point is used
 )
 
 type SubTopic struct {
@@ -96,11 +97,25 @@ type Room struct {
 	TopicEntity string     `json:"topic_entity,omitempty"`
 	SubTopics   []SubTopic `json:"sub_topics"`
 
+	// graph is what Cala resolved for Topic; nil in offline mode.
+	graph *TopicGraph
+
+	// Loads is the background work the round is waiting on, in start order.
+	Loads []*LoadStep `json:"loads,omitempty"`
+
+	// settledAt is when the last die landed; the room holds on the dice for
+	// a few seconds so the result is seen, then the poll advances it.
+	settledAt time.Time
+
 	Questions []*Question `json:"-"`
 	Current   int         `json:"current"`
 
 	QuestionCount int    `json:"question_count"`
 	Error         string `json:"error,omitempty"`
+	// Status is what the room is doing while players wait (resolving a
+	// topic, pulling values); Notice is a one-off message for the next screen.
+	Status string `json:"status,omitempty"`
+	Notice string `json:"notice,omitempty"`
 
 	CreatedAt  time.Time `json:"created_at"`
 	questionAt time.Time
@@ -278,9 +293,23 @@ func (r *Room) Roll(playerID string) error {
 	for _, p := range ordered {
 		r.Order = append(r.Order, p.ID)
 	}
-	r.Phase = PhaseTopic
+	r.settledAt = time.Now()
 	return nil
 }
+
+// diceHold is how long settled dice stay on screen before the topic pick.
+const diceHold = 3 * time.Second
+
+// tick advances time-driven transitions. Called under the lock by whoever
+// renders the room, so a 1s poll is the clock.
+func (r *Room) tick() {
+	if r.Phase == PhaseRolling && !r.settledAt.IsZero() && time.Since(r.settledAt) >= diceHold {
+		r.Phase = PhaseTopic
+	}
+}
+
+// Settled reports whether every die has landed.
+func (r *Room) Settled() bool { return !r.settledAt.IsZero() }
 
 // TopicPicker is the player who won the roll.
 func (r *Room) TopicPicker() string {

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Set CALA_API_KEY locally and on the VPS without the key ever touching a
+# shell history, an agent transcript, or git.
+#
+#   ./ops/set-cala-key            # prompts silently, writes ../../.env and the VPS env
+#   ./ops/set-cala-key --local    # only ../../.env
+#
+# Run it from your own terminal: it needs a TTY for the hidden prompt.
+set -euo pipefail
+cd "$(dirname "$0")/../../.."
+
+HOST="${DEPLOY_HOST:-root@46.101.104.158}"
+REMOTE_ENV=/opt/deez-win/env
+
+[ -t 0 ] || { echo "needs a terminal (the prompt is hidden)"; exit 1; }
+read -rsp "CALA_API_KEY: " KEY; echo
+[ -n "$KEY" ] || { echo "empty key, nothing done"; exit 1; }
+
+# Local .env: replace or append the line.
+touch .env
+if grep -q '^CALA_API_KEY=' .env; then
+  sed -i "s|^CALA_API_KEY=.*|CALA_API_KEY=$KEY|" .env
+else
+  printf 'CALA_API_KEY=%s\n' "$KEY" >> .env
+fi
+echo "local  .env updated"
+[ "${1:-}" = "--local" ] && exit 0
+
+# Remote: same replace-or-append, then restart so the running binary sees it.
+ssh "$HOST" "KEY='$KEY' bash -s" <<'REMOTE'
+set -euo pipefail
+touch /opt/deez-win/env
+if grep -q '^CALA_API_KEY=' /opt/deez-win/env; then
+  sed -i "s|^CALA_API_KEY=.*|CALA_API_KEY=$KEY|" /opt/deez-win/env
+else
+  printf 'CALA_API_KEY=%s\n' "$KEY" >> /opt/deez-win/env
+fi
+chown www-data:www-data /opt/deez-win/env && chmod 600 /opt/deez-win/env
+systemctl restart deez-win
+sleep 1
+systemctl is-active deez-win
+journalctl -u deez-win -n 3 --no-pager | grep -i cala || true
+REMOTE
+echo "remote $HOST:$REMOTE_ENV updated and service restarted"

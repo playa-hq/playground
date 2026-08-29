@@ -25,9 +25,13 @@ func main() {
 	origin := flag.String("origin", "", "public origin for auth callbacks (default http://localhost<addr>)")
 	statePath := flag.String("leaderboard", defaultLeaderboardPath(), "path to the persisted leaderboard")
 	devAuth := flag.Bool("dev-auth", false, "use local stand-in sessions instead of D3BIT (local development only)")
+	probe := flag.String("probe", "", "resolve a topic against Cala, print what a round would use, and exit")
 	flag.Parse()
 
 	cala := NewCala(os.Getenv("CALA_API_KEY"))
+	if *probe != "" {
+		os.Exit(runProbe(cala, *probe))
+	}
 
 	var auth sessionSource = NewAuth(*d3bitURL)
 	if *devAuth {
@@ -64,6 +68,7 @@ func main() {
 
 	if cala.Enabled() {
 		log.Printf("cala: enabled")
+		cala.Warm(CalaTopicSuggestions())
 	} else {
 		log.Printf("cala: no CALA_API_KEY — running on offline fixtures")
 	}
