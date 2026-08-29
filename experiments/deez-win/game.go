@@ -169,7 +169,7 @@ func (s *Store) Create(public bool, maxPlayers, questions int) *Room {
 		maxPlayers = 4
 	}
 	if questions <= 0 {
-		questions = 8
+		questions = 10
 	}
 
 	s.mu.Lock()

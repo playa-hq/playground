@@ -63,15 +63,16 @@ func pips(value int) []bool {
 // logic stays testable.
 
 type homeView struct {
-	User         *D3bitUser
-	Top          []*Standing
-	MyRank       int
-	Lobbies      []lobbyView
-	PlayerCounts []int
-	Letters      []string // the wordmark, one span per letter
-	GoogleURL    string
-	Error        string
-	LoginMsg     string
+	User           *D3bitUser
+	Top            []*Standing
+	MyRank         int
+	Lobbies        []lobbyView
+	PlayerCounts   []int
+	QuestionCounts []int
+	Letters        []string // the wordmark, one span per letter
+	GoogleURL      string
+	Error          string
+	LoginMsg       string
 }
 
 type lobbyView struct {

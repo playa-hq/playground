@@ -19,13 +19,27 @@
   <section class="card hero-card">
     <label class="field">Create a lobby</label>
     <form method="post" action="/rooms" class="stack">
-      <div class="stepper" role="radiogroup" aria-label="Number of players">
-        {{range $n := .PlayerCounts}}
-          <label class="seg">
-            <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
-            <span>{{$n}}</span>
-          </label>
-        {{end}}
+      <div class="lobby-setting">
+        <span class="small muted">Players</span>
+        <div class="stepper" role="radiogroup" aria-label="Number of players">
+          {{range $n := .PlayerCounts}}
+            <label class="seg">
+              <input type="radio" name="max_players" value="{{$n}}" {{if eq $n 3}}checked{{end}}>
+              <span>{{$n}}</span>
+            </label>
+          {{end}}
+        </div>
+      </div>
+      <div class="lobby-setting">
+        <span class="small muted">Questions</span>
+        <div class="stepper" role="radiogroup" aria-label="Number of questions">
+          {{range $n := .QuestionCounts}}
+            <label class="seg questions">
+              <input type="radio" name="question_count" value="{{$n}}" {{if eq $n 10}}checked{{end}}>
+              <span>{{$n}}</span>
+            </label>
+          {{end}}
+        </div>
       </div>
       <div class="row wrap">
         <button class="primary" name="public" value="0">Private lobby</button>

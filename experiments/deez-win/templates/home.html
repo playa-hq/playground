@@ -1,57 +1,36 @@
 {{define "body"}}
-<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="home-shell">
+  <header class="home-brand" aria-label="deez.win">
+    <img src="/dice-d12.png" alt="" width="40" height="40">
+    <span>DEEZ.WIN</span>
+  </header>
 
-<div class="topbar home-top">
-  <span></span>
-  <div class="row">
-    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
-    <div id="account">{{template "account" .}}</div>
-  </div>
-</div>
-
-<section class="hero-big">
-  <!-- One span per letter: each springs in on its own beat and boops on hover. -->
-  <h1 class="wordmark" aria-label="deez.win">
-    {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
-  </h1>
-  <div class="sparkles" aria-hidden="true"></div>
-  <p class="hero-line">2–4 players · dice decide · answers with receipts</p>
-  <form method="get" action="/play" class="play-strip">
-    <button class="primary big magnet"><span>Play</span></button>
-  </form>
-  <form method="post" action="/join" class="join-line" aria-label="Join with a code">
-    <span class="muted small">Have a code?</span>
-    <input type="text" class="code small-code" name="code" maxlength="4" placeholder="CODE"
-           autocomplete="off" required pattern="[A-Za-z0-9]{4}" aria-label="Room code">
-    <button class="ghost small">Join</button>
-  </form>
-</section>
-<p class="footer home-foot">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>
-<script src="/home.js"></script>
-{{end}}
-
-{{define "account"}}
-{{if and .User (not .User.IsAnon)}}
-  <!-- <details> is the menu: no JS, closes on outside click via the summary. -->
-  <details class="menu">
-    <summary class="who"><span class="dot" style="background:{{.User.Color}}"></span>{{.User.DisplayName}}</summary>
-    <div class="pop">
-      <p class="small muted">{{or .User.Email .User.DisplayName}}</p>
-      <form method="post" action="/logout"><button class="ghost small">Log out</button></form>
-    </div>
-  </details>
-{{else}}
-  <details class="menu">
-    <summary class="who guest">{{with .User}}<span class="dot" style="background:{{.Color}}"></span>{{.DisplayName}} · {{end}}sign in</summary>
-    <div class="pop">
-      <p class="small muted">Keep your score on the board.</p>
-      <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
-        <input type="email" name="email" placeholder="you@example.com" class="plain" required>
-        <button class="primary">Email me a link</button>
+  <section class="hero-big">
+    <div class="home-copy">
+      <p class="home-kicker">A data-backed party game</p>
+      <!-- One span per letter: each springs in on its own beat and boops on hover. -->
+      <h1 class="wordmark" aria-label="deez.win">
+        {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
+      </h1>
+      <p class="hero-line">Roll for the order. Pick a world. Prove what you know.</p>
+      <form method="get" action="/play" class="play-strip">
+        <button class="home-play magnet"><span>Play</span><i aria-hidden="true">↗</i></button>
       </form>
-      <a class="btn google" href="{{.GoogleURL}}"><span class="g" aria-hidden="true">G</span> Continue with Google</a>
-      {{with .LoginMsg}}<p class="small muted">{{.}}</p>{{end}}
+      <p class="home-meta">2–4 players&nbsp;&nbsp;·&nbsp;&nbsp;facts with receipts</p>
     </div>
-  </details>
-{{end}}
+
+    <div class="home-art" aria-hidden="true">
+      <div class="die-orbit"></div>
+      <img src="/dice-d12.png" alt="" width="640" height="640">
+      <span class="die-note note-top">12 SIDES</span>
+      <span class="die-note note-bottom">ONE WINNER</span>
+    </div>
+  </section>
+
+  <footer class="home-foot">
+    <span>DATA BY CALA</span>
+    <span>IMAGES &amp; SOUND BY FAL.AI</span>
+  </footer>
+</div>
+<script src="/home.js"></script>
 {{end}}

@@ -102,14 +102,15 @@ func (s *Server) homeView(u *D3bitUser, msg string) homeView {
 	}
 
 	return homeView{
-		User:         u,
-		Top:          s.board.Top(10),
-		MyRank:       rankOf(s.board, u),
-		Lobbies:      lobbies,
-		PlayerCounts: []int{2, 3, 4},
-		Letters:      strings.Split("DEEZ.WIN", ""),
-		GoogleURL:    s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
-		LoginMsg:     msg,
+		User:           u,
+		Top:            s.board.Top(10),
+		MyRank:         rankOf(s.board, u),
+		Lobbies:        lobbies,
+		PlayerCounts:   []int{2, 3, 4},
+		QuestionCounts: []int{5, 10, 15},
+		Letters:        strings.Split("DEEZ.WIN", ""),
+		GoogleURL:      s.d3bitURL + "/auth/google?redirect=" + url.QueryEscape(s.origin+"/auth/callback"),
+		LoginMsg:       msg,
 	}
 }
 
@@ -155,12 +156,26 @@ func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	r.ParseForm()
 
-	room := s.store.Create(r.FormValue("public") == "1", atoi(r.FormValue("max_players"), 3), 8)
+	room := s.store.Create(
+		r.FormValue("public") == "1",
+		atoi(r.FormValue("max_players"), 3),
+		questionCount(r.FormValue("question_count")),
+	)
 	if _, err := room.Join(u); err != nil {
 		s.fail(w, r, err.Error())
 		return
 	}
 	http.Redirect(w, r, "/rooms/"+room.Code, http.StatusSeeOther)
+}
+
+func questionCount(raw string) int {
+	count := atoi(raw, 10)
+	switch count {
+	case 5, 10, 15:
+		return count
+	default:
+		return 10
+	}
 }
 
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
