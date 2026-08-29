@@ -19,6 +19,9 @@ import (
 //go:embed static
 var staticFS embed.FS
 
+// hasSfx is whether generated sound files were embedded in this build.
+var hasSfx bool
+
 func main() {
 	addr := flag.String("addr", ":8080", "listen address")
 	d3bitURL := flag.String("d3bit", envOr("D3BIT_URL", "https://api.d3bit.com"), "D3BIT API base URL")
@@ -61,6 +64,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	srv.Routes(mux)
+
+	if _, err := fs.Stat(staticFS, "static/sfx/roll.wav"); err == nil {
+		hasSfx = true
+	}
 
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {

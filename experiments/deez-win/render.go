@@ -63,6 +63,7 @@ func pips(value int) []bool {
 // logic stays testable.
 
 type homeView struct {
+	HasSfx         bool
 	User           *D3bitUser
 	Top            []*Standing
 	MyRank         int
@@ -111,6 +112,7 @@ type reviewView struct {
 }
 
 type roomView struct {
+	HasSfx      bool
 	Room        *Room
 	Me          string
 	User        *D3bitUser // the viewer, for the top bar
@@ -151,6 +153,7 @@ func (s *Server) buildRoomView(room *Room, me string, flash string) *roomView {
 func (s *Server) roomViewLocked(room *Room, me, flash string) *roomView {
 	room.tick()
 	v := &roomView{
+		HasSfx:      hasSfx,
 		Room:        room,
 		Me:          me,
 		CalaEnabled: s.cala.Enabled(),

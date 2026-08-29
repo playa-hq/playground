@@ -10,7 +10,10 @@
   let muted = localStorage.getItem('wg_muted') === '1';
   const files = {};
 
-  ['roll', 'select', 'correct', 'wrong', 'win'].forEach((name) => {
+  // Only look for generated files when the build says it ships them;
+  // otherwise every page load logs five 404s for nothing.
+  const shipped = document.body.dataset.sfx === '1';
+  (shipped ? ['roll', 'select', 'correct', 'wrong', 'win'] : []).forEach((name) => {
     const a = new Audio(`/sfx/${name}.wav`);
     a.addEventListener('canplaythrough', () => { files[name] = a; }, { once: true });
     a.addEventListener('error', () => {}, { once: true });
