@@ -1,6 +1,6 @@
 # deez.win
 
-**Started:** 2026-08-29 · **Status:** iteration 0 · **Owner:** _tbd_ · **Live:** https://deez.win
+**Started:** 2026-08-29 · **Status:** iteration 1 · **Owner:** _tbd_ · **Live:** https://deez.win
 
 A 2–4 player quiz where the questions are built from a **verified entity graph**
 rather than written by a language model. Dice decide who picks the topic;
@@ -80,6 +80,45 @@ working app with JavaScript switched off.
 The one JS file, `static/sfx.js`, only listens for `htmx:after:swap` and makes
 noises. It is not load-bearing.
 
+## Cala, for real
+
+The graph is company-, people- and finance-shaped (SEC filings, registries,
+credit reports), so a topic is a **set of entities** — "Big Tech", "Spanish
+startups", "European banks" — not a trivia category. The pipeline:
+
+1. `POST /v1/knowledge/query` resolves the topic to entities (fuzzy
+   `GET /v1/entities?name=` fills in when the topic is a single thing).
+2. Every entity is introspected in parallel; only axes shared by **≥3** of them
+   become sub-topics, ranked by how good a quiz question they make
+   (headcount and founding date first, then revenue-style metrics, then
+   relationships like headquarters or industry, then free-text properties).
+3. On build, one `POST /v1/entities/{id}` per entity fetches exactly the
+   claimed axes. Each value arrives with its own source, which is what the
+   receipt shows. Time-series metrics use the latest point.
+
+Numbers become higher/lower; dates become "founded first"; strings and
+relationships become multiple choice with the *other entities' values* as
+distractors, so every option is a real answer to the same question.
+
+Check coverage for a topic before putting it on stage:
+
+```bash
+CALA_API_KEY=… go run . -probe "Spanish fintechs"
+```
+
+It prints the entities, the axes offered, and the questions a round would ask,
+with sources. This is the tool behind kill criterion #1.
+
+Set the key without it touching a shell history, transcript or git:
+
+```bash
+./ops/set-cala-key          # hidden prompt → ../../.env and the VPS, restarts the service
+./ops/set-cala-key --local  # just .env
+```
+
+`cala_test.go` runs the whole pipeline against a mock of the documented
+response shapes, so parsing is verified without a key.
+
 ## Run it
 
 ```bash
@@ -106,6 +145,17 @@ and no key. `scripts/gen-audio.sh` generates richer fal.ai chiptune versions int
 Sounds are **generated once and committed**, not called at runtime — a game loop
 cannot wait on an inference round-trip, and this way a round costs nothing.
 
+## The look
+
+An arcade cabinet that prints receipts. Press Start 2P for anything the
+cabinet says (codes, scores, headers), JetBrains Mono for anything a person
+reads. Mint means live/correct, gold means points, and the **receipt** — the
+answer reveal and the end-of-round review — is the one paper-coloured thing on
+screen, because the proof should look different from the play. A ten-second
+gold bar drains at the same rate the server pays the speed bonus; keys 1–4
+answer; the entities the graph resolved are shown as chips so players see the
+topic became something concrete.
+
 ## Design decisions worth knowing
 
 **Cala decides what is true; the model only decides how it reads.** A numeric
@@ -125,10 +175,12 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
 
 ## Known gaps
 
-- **The UI has not been checked in a browser.** The full game loop is verified
-  end to end over HTTP, and every htmx attribute used was checked against the
-  htmx 4.0 source rather than the docs — but no human or headless browser has
-  actually rendered a frame. Do that first.
+- **The UI has been rendered headlessly (home, axes, quiz, results) but not
+  played by hand in a real browser.** htmx swaps, the bonus bar restart and
+  the keyboard answers still want a human check.
+- **Cala has not been hit with a real key yet.** The client follows the
+  published reference and passes the mock test; the first `-probe` run will
+  tell us whether real topics resolve to enough shared axes.
 - **`htmx.org@4.0.0` is not the npm `latest` tag yet** (that still points at
   2.0.10), so the version in the CDN URL is pinned deliberately. Don't "fix" it
   to a range.

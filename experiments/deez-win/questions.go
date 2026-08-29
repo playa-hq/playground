@@ -4,95 +4,165 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 // buildQuestions assembles the round from the axes players claimed.
 //
 // The rule that keeps this honest: Cala decides what is true, the model only
-// decides how it reads. A numeric axis becomes a higher/lower question with a
-// value straight off the graph — no model in the loop at all, so there is
-// nothing to hallucinate. Anything we cannot ground, we drop.
+// decides how it reads. A value comes straight off the graph with its source;
+// the code only chooses which two entities to compare. Anything we cannot
+// ground, we drop.
 func (s *Server) buildQuestions(ctx context.Context, r *Room) ([]*Question, error) {
-	if !s.cala.Enabled() {
+	if !s.cala.Enabled() || r.graph == nil {
 		return offlineQuestions(r), nil
 	}
 
+	claimed := r.SubTopicsClaimed()
+	if len(claimed) == 0 {
+		return nil, fmt.Errorf("no axes claimed")
+	}
+
+	details := s.fetchDetails(ctx, r.graph, claimed)
+	if len(details) < 2 {
+		return nil, fmt.Errorf("cala returned too few entities for %q", r.Topic)
+	}
+
+	perAxis := max(1, r.QuestionCount/len(claimed))
 	var qs []*Question
-	perAxis := r.QuestionCount / max(1, len(r.SubTopicsClaimed()))
-
-	for _, st := range r.SubTopicsClaimed() {
-		entities, err := s.cala.SearchEntities(ctx, r.Topic, 12)
-		if err != nil || len(entities) < 2 {
-			continue
-		}
-
-		switch st.Kind {
-		case SubTopicNumeric:
-			qs = append(qs, s.numericQuestions(ctx, r, st, entities, perAxis)...)
-		default:
-			qs = append(qs, s.factQuestions(ctx, r, st, entities, perAxis)...)
-		}
-	}
-
-	// A round with no grounded questions is a failed round. Say so rather
-	// than papering over it with invented content.
-	if len(qs) == 0 {
-		return offlineQuestions(r), nil
-	}
-
-	for i, q := range qs {
-		q.Index = i
+	for _, st := range claimed {
+		qs = append(qs, axisQuestions(st, details, perAxis)...)
 	}
 	if len(qs) > r.QuestionCount {
 		qs = qs[:r.QuestionCount]
 	}
+	for i, q := range qs {
+		q.Index = i
+	}
 	return qs, nil
 }
 
-// numericQuestions builds higher/lower pairs from a numerical observation.
-func (s *Server) numericQuestions(ctx context.Context, r *Room, st SubTopic, entities []CalaEntity, n int) []*Question {
-	type valued struct {
-		name string
-		val  float64
-		src  CalaSource
+// fetchDetails pulls the claimed axes for every entity in one call each.
+func (s *Server) fetchDetails(ctx context.Context, g *TopicGraph, claimed []SubTopic) []*CalaEntityDetail {
+	var props, rels, metrics []string
+	for _, st := range claimed {
+		switch st.Kind {
+		case SubTopicRelation:
+			rels = append(rels, st.Key)
+		case SubTopicMetric:
+			metrics = append(metrics, st.Key)
+		default:
+			props = append(props, st.Key)
+		}
 	}
 
-	var pool []valued
-	for _, e := range entities {
-		results, _, err := s.cala.Query(ctx, fmt.Sprintf("%s.%s", e.Name, st.Key))
-		if err != nil || len(results) == 0 {
-			continue
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var out []*CalaEntityDetail
+	for _, e := range g.Entities {
+		wg.Add(1)
+		go func(e CalaEntity) {
+			defer wg.Done()
+			d, err := s.cala.GetEntity(ctx, e.ID, props, rels, g.MetricIDs(e.ID, metrics))
+			if err != nil {
+				return
+			}
+			if d.Name == "" {
+				d.Name = e.Name
+			}
+			mu.Lock()
+			out = append(out, d)
+			mu.Unlock()
+		}(e)
+	}
+	wg.Wait()
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// grounded is one entity's value on one axis.
+type grounded struct {
+	name string
+	num  float64
+	str  string
+	unit string
+	src  CalaSource
+}
+
+// valuesFor reads one axis across the entities, deciding per value whether it
+// is a number. A property key that *looks* numeric but holds text becomes a
+// fact question rather than a broken comparison.
+func valuesFor(st SubTopic, details []*CalaEntityDetail) (nums, strs []grounded) {
+	for _, d := range details {
+		var v CalaValue
+		var ok bool
+		switch st.Kind {
+		case SubTopicRelation:
+			v, ok = d.Relations[st.Key]
+		case SubTopicMetric:
+			v, ok = d.Metrics[st.Key]
+		default:
+			v, ok = d.Properties[st.Key]
 		}
-		v, src, ok := firstNumber(results[0])
 		if !ok {
 			continue
 		}
-		pool = append(pool, valued{name: e.Name, val: v, src: src})
+		g := grounded{name: d.Name, src: v.Source, unit: d.Units[st.Key]}
+		if n, ok := asNumber(v.Value); ok {
+			g.num = n
+			nums = append(nums, g)
+			continue
+		}
+		if year, ok := asYear(v.Value); ok {
+			g.num = year
+			nums = append(nums, g)
+			continue
+		}
+		if s, ok := v.Value.(string); ok && strings.TrimSpace(s) != "" {
+			g.str = strings.TrimSpace(s)
+			strs = append(strs, g)
+		}
 	}
-	if len(pool) < 2 {
-		return nil
+	return nums, strs
+}
+
+func axisQuestions(st SubTopic, details []*CalaEntityDetail, n int) []*Question {
+	nums, strs := valuesFor(st, details)
+	if len(nums) >= 2 && len(nums) >= len(strs) {
+		return numericQuestions(st, nums, n)
 	}
-	sort.Slice(pool, func(i, j int) bool { return pool[i].val < pool[j].val })
+	return factQuestions(st, strs, n)
+}
+
+// numericQuestions builds higher/lower pairs. Neighbours in sorted order make
+// the closest, hardest pairs; shuffling the pair hides which side is bigger.
+func numericQuestions(st SubTopic, pool []grounded, n int) []*Question {
+	sort.Slice(pool, func(i, j int) bool { return pool[i].num < pool[j].num })
+	prompt, lowerWins := numericPrompt(st.Label, st.Key)
 
 	var out []*Question
 	for i := 0; i+1 < len(pool) && len(out) < n; i += 2 {
 		a, b := pool[i], pool[i+1]
-		if a.val == b.val {
+		if a.num == b.num {
 			continue // no defensible answer
 		}
-		prompt, lowerWins := numericPrompt(st.Label, st.Key)
-		// The pool is sorted ascending, so b is the larger of the pair.
-		answer, src := 1, b.src
+		answer, src := 1, b.src // b is the larger of the pair
 		if lowerWins {
 			answer, src = 0, a.src
+		}
+		opts := []string{a.name, b.name}
+		if randInt(2) == 1 {
+			opts[0], opts[1] = opts[1], opts[0]
+			answer = 1 - answer
 		}
 		out = append(out, &Question{
 			Kind:      "higher_lower",
 			Prompt:    prompt,
-			Options:   []string{a.name, b.name},
+			Options:   opts,
 			Answer:    answer,
-			Fact:      fmt.Sprintf("%s: %s — %s: %s", a.name, formatValue(st.Key, a.val), b.name, formatValue(st.Key, b.val)),
+			Fact:      fmt.Sprintf("%s: %s · %s: %s", a.name, formatUnit(st.Key, a.num, a.unit), b.name, formatUnit(st.Key, b.num, b.unit)),
 			Source:    src.Name,
 			SourceURL: src.URL,
 			SeededBy:  st.ClaimedBy,
@@ -101,49 +171,39 @@ func (s *Server) numericQuestions(ctx context.Context, r *Room, st SubTopic, ent
 	return out
 }
 
-// factQuestions builds "which one is it" questions from a relationship or
-// property, using other entities in the same set as distractors.
-func (s *Server) factQuestions(ctx context.Context, r *Room, st SubTopic, entities []CalaEntity, n int) []*Question {
+// factQuestions asks "which is it" with the other entities' values as
+// distractors, so every option is a real answer to the same question.
+// Two distinct values is the floor — a fair coin, still a fact.
+func factQuestions(st SubTopic, pool []grounded, n int) []*Question {
 	var out []*Question
-
-	for _, e := range entities {
+	for _, g := range pool {
 		if len(out) >= n {
 			break
 		}
-		results, _, err := s.cala.Query(ctx, fmt.Sprintf("%s.%s", e.Name, st.Key))
-		if err != nil || len(results) == 0 {
-			continue
-		}
-		answer, src, ok := firstString(results[0])
-		if !ok || answer == "" {
-			continue
-		}
-
-		options := []string{answer}
-		for _, other := range entities {
+		options := []string{g.str}
+		for _, other := range pool {
 			if len(options) >= 4 {
 				break
 			}
-			if other.ID == e.ID || other.Name == answer {
-				continue
+			if other.str != g.str && !contains(options, other.str) {
+				options = append(options, other.str)
 			}
-			options = append(options, other.Name)
 		}
-		if len(options) < 3 {
+		// Two real values still make a fair question; one does not.
+		if len(options) < 2 {
 			continue
 		}
-
 		correct := randInt(len(options))
 		options[0], options[correct] = options[correct], options[0]
 
 		out = append(out, &Question{
 			Kind:      "multiple_choice",
-			Prompt:    fmt.Sprintf("%s — %s?", e.Name, strings.ToLower(st.Label)),
+			Prompt:    fmt.Sprintf("%s — %s?", g.name, strings.ToLower(st.Label)),
 			Options:   options,
 			Answer:    correct,
-			Fact:      fmt.Sprintf("%s %s: %s", e.Name, strings.ToLower(st.Label), answer),
-			Source:    src.Name,
-			SourceURL: src.URL,
+			Fact:      fmt.Sprintf("%s · %s: %s", g.name, strings.ToLower(st.Label), g.str),
+			Source:    g.src.Name,
+			SourceURL: g.src.URL,
 			SeededBy:  st.ClaimedBy,
 		})
 	}
@@ -161,75 +221,33 @@ func (r *Room) SubTopicsClaimed() []SubTopic {
 	return out
 }
 
-func firstNumber(row map[string]any) (float64, CalaSource, bool) {
-	src := sourceOf(row)
-	for _, k := range sortedKeys(row) {
-		switch v := row[k].(type) {
-		case float64:
-			return v, src, true
-		case int:
-			return float64(v), src, true
-		}
+func asNumber(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case string:
+		f, err := strconv.ParseFloat(strings.ReplaceAll(n, ",", ""), 64)
+		return f, err == nil
 	}
-	return 0, src, false
+	return 0, false
 }
 
-func firstString(row map[string]any) (string, CalaSource, bool) {
-	src := sourceOf(row)
-	for _, k := range sortedKeys(row) {
-		if k == "source" || k == "sources" || k == "origins" {
-			continue
-		}
-		if v, ok := row[k].(string); ok && v != "" {
-			return v, src, true
-		}
+// asYear reads "1977-04-01", "1977-04" or "1977" as a year.
+func asYear(v any) (float64, bool) {
+	s, ok := v.(string)
+	if !ok || len(s) < 4 {
+		return 0, false
 	}
-	return "", src, false
-}
-
-// sourceOf digs the first citation out of a result row so every question can
-// show where its answer came from.
-func sourceOf(row map[string]any) CalaSource {
-	for _, key := range []string{"origins", "sources", "source"} {
-		raw, ok := row[key]
-		if !ok {
-			continue
-		}
-		switch v := raw.(type) {
-		case map[string]any:
-			return calaSourceFromMap(v)
-		case []any:
-			if len(v) > 0 {
-				if m, ok := v[0].(map[string]any); ok {
-					return calaSourceFromMap(m)
-				}
-			}
-		}
+	if len(s) > 4 && s[4] != '-' {
+		return 0, false
 	}
-	return CalaSource{}
-}
-
-func calaSourceFromMap(m map[string]any) CalaSource {
-	var s CalaSource
-	if v, ok := m["name"].(string); ok {
-		s.Name = v
+	y, err := strconv.Atoi(s[:4])
+	if err != nil {
+		return 0, false
 	}
-	if v, ok := m["url"].(string); ok {
-		s.URL = v
-	}
-	if s.Name == "" && s.URL != "" {
-		s.Name = s.URL
-	}
-	return s
-}
-
-func sortedKeys(m map[string]any) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
+	return float64(y), true
 }
 
 func formatNum(v float64) string {

@@ -28,6 +28,7 @@ const (
 	SubTopicNumeric  SubTopicKind = "numeric"
 	SubTopicRelation SubTopicKind = "relation"
 	SubTopicProperty SubTopicKind = "property"
+	SubTopicMetric   SubTopicKind = "metric" // a time series (revenue, headcount…); latest point is used
 )
 
 type SubTopic struct {
@@ -95,6 +96,9 @@ type Room struct {
 	Topic       string     `json:"topic"`
 	TopicEntity string     `json:"topic_entity,omitempty"`
 	SubTopics   []SubTopic `json:"sub_topics"`
+
+	// graph is what Cala resolved for Topic; nil in offline mode.
+	graph *TopicGraph
 
 	Questions []*Question `json:"-"`
 	Current   int         `json:"current"`

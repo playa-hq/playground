@@ -113,6 +113,7 @@ type roomView struct {
 	Me          string
 	CalaEnabled bool
 	Flash       string
+	FullPage    bool // the whole room page, not a poll: no out-of-band roster
 
 	Picking       string
 	PickerName    string
@@ -121,6 +122,7 @@ type roomView struct {
 	IHaveRolled   bool
 	FillPct       int
 
+	Entities    []string // what the graph resolved the topic to
 	SubTopics   []subTopicView
 	Suggestions []string
 	Question    *questionView
@@ -166,6 +168,16 @@ func (s *Server) roomViewLocked(room *Room, me, flash string) *roomView {
 	}
 	if p := room.find(me); p != nil {
 		v.IHaveRolled = p.Roll != 0
+	}
+
+	if room.graph != nil {
+		for _, e := range room.graph.Entities {
+			v.Entities = append(v.Entities, e.Name)
+		}
+	} else if room.Topic != "" && !s.cala.Enabled() {
+		for _, e := range offlineEntitiesFor(room.Topic) {
+			v.Entities = append(v.Entities, e.name)
+		}
 	}
 
 	for _, st := range room.SubTopics {

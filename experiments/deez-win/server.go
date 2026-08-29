@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -187,6 +188,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, msg string) {
 
 func (s *Server) renderRoom(w http.ResponseWriter, r *http.Request, room *Room, me, flash string) {
 	v := s.buildRoomView(room, me, flash)
+	v.FullPage = true
 	v.Suggestions = s.suggestions(r.Context(), room)
 	render(w, http.StatusOK, roomTmpl, "layout", v)
 }
@@ -419,7 +421,16 @@ func (s *Server) suggestions(ctx context.Context, room *Room) []string {
 	if room.Phase != PhaseTopic {
 		return nil
 	}
+	if s.cala.Enabled() {
+		return CalaTopicSuggestions()
+	}
 	return OfflineTopicSuggestions()
+}
+
+// CalaTopicSuggestions are set-shaped prompts: the query endpoint resolves a
+// set to its members, which is what a comparison question needs.
+func CalaTopicSuggestions() []string {
+	return []string{"Big Tech", "Spanish startups", "European banks", "car makers", "AI labs"}
 }
 
 func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string) []SubTopic {
@@ -427,23 +438,26 @@ func (s *Server) resolveSubTopics(ctx context.Context, room *Room, topic string)
 		return offlineSubTopics(topic)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
 
-	entities, err := s.cala.SearchEntities(ctx, topic, 5)
-	if err != nil || len(entities) == 0 {
-		return offlineSubTopics(topic)
-	}
-	room.TopicEntity = entities[0].ID
-
-	in, err := s.cala.Introspect(ctx, entities[0].ID)
+	g, err := s.cala.BuildTopicGraph(ctx, topic)
 	if err != nil {
-		return offlineSubTopics(topic)
+		log.Printf("cala: topic %q: %v", topic, err)
+		return nil
 	}
-	if subs := SubTopics(in, 5); len(subs) > 0 {
-		return subs
+	subs := g.SubTopics(5)
+	log.Printf("cala: topic %q → %d entities, %d axes", topic, len(g.Entities), len(subs))
+	if len(subs) == 0 {
+		return nil
 	}
-	return offlineSubTopics(topic)
+	room.mu.Lock()
+	room.graph = g
+	if len(g.Entities) > 0 {
+		room.TopicEntity = g.Entities[0].ID
+	}
+	room.mu.Unlock()
+	return subs
 }
 
 // startQuiz builds questions off the request path so the picking player is not

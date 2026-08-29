@@ -1,20 +1,23 @@
 {{define "body"}}
 <div class="topbar">
-  <div>
-    <h1 class="title">DEEZ.WIN</h1>
-    <p class="subtitle">v0.1 — a quiz built from a verified entity graph</p>
-  </div>
+  <a class="brand" href="/"><span class="brand-die" aria-hidden="true"></span>DEEZ.WIN</a>
   <div class="row">
-    <button type="button" class="ghost small" data-mute>🔊</button>
+    <button type="button" class="ghost small" data-mute aria-label="Toggle sound">🔊</button>
     {{with .User}}<span class="tag {{if not .IsAnon}}live{{end}}">{{.DisplayName}}{{if .IsAnon}} · guest{{end}}</span>{{end}}
   </div>
 </div>
 
 {{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
 
+<section class="hero">
+  <h1 class="pixel hero-title">Every answer<br>has a <em>receipt</em>.</h1>
+  <p class="hero-sub">A 2–4 player quiz that never asks a model what is true. Dice pick who chooses the topic;
+    the questions are read straight off Cala's verified entity graph, source attached.</p>
+</section>
+
 <div class="grid">
   <div class="stack">
-    <div class="card stack">
+    <div class="card stack hero-card">
       <form method="post" action="/rooms" class="stack">
         <div>
           <label class="field">Players</label>
@@ -31,14 +34,14 @@
           </div>
         </div>
         <div class="row wrap">
-          <button class="primary" name="public" value="0">Create a lobby</button>
-          <button name="public" value="1">Create public lobby</button>
+          <button class="primary big" name="public" value="0">Create a lobby</button>
+          <button name="public" value="1">Make it public</button>
         </div>
       </form>
     </div>
 
     <div class="card stack">
-      <label class="field">Join game</label>
+      <label class="field">Join with a code</label>
       <form method="post" action="/join" class="row">
         <input type="text" class="code" name="code" maxlength="4" placeholder="CODE"
                autocomplete="off" required pattern="[A-Za-z0-9]{4}">
@@ -59,21 +62,21 @@
     </div>
     <div class="card" id="account">{{template "account" .}}</div>
     <div class="card">
-      <label class="field">How it works</label>
-      <ol class="small muted tight">
-        <li>Everyone rolls. Highest picks the topic.</li>
-        <li>The rest each claim one of the top 5 sub-topics.</li>
-        <li>Questions come from those axes — with sources.</li>
+      <label class="field">How a round goes</label>
+      <ol class="steps">
+        <li><b>Roll.</b> Highest die picks the topic.</li>
+        <li><b>Claim.</b> Everyone else takes one axis the graph holds for it.</li>
+        <li><b>Answer.</b> Fast and right scores most; your own axis pays half.</li>
       </ol>
     </div>
   </div>
 </div>
 
-<p class="footer">CALA DATA &amp; SHOWCASED BY FAL.AI</p>
+<p class="footer">DATA BY CALA · SOUND BY FAL.AI · NO MODEL DECIDES WHAT IS TRUE</p>
 {{end}}
 
 {{define "lobbies"}}
-<label class="field">Or public lobbies</label>
+<label class="field">Public lobbies</label>
 {{if .Lobbies}}
   {{range .Lobbies}}
     <div class="lobby-item">
@@ -83,7 +86,7 @@
     </div>
   {{end}}
 {{else}}
-  <p class="muted small tight">No public lobbies right now. Create one and it shows up here.</p>
+  <p class="muted small tight">Nobody is waiting right now. Make a public lobby and it shows up here.</p>
 {{end}}
 {{end}}
 
@@ -93,11 +96,11 @@
   <p class="small">Signed in as <strong>{{or .User.Email .User.DisplayName}}</strong>.</p>
   <form method="post" action="/logout"><button class="ghost">Log out</button></form>
 {{else}}
-  <p class="small muted">Playing as a guest. Sign in to keep your score.</p>
+  <p class="small muted">You're a guest. Sign in to keep your score on the board.</p>
   <form class="stack" hx-post="/login" hx-target="#account" hx-swap="innerHTML">
     <input type="email" name="email" placeholder="you@example.com" class="plain" required>
     <div class="row wrap">
-      <button>Email link</button>
+      <button>Email me a link</button>
       <a class="btn" href="{{.GoogleURL}}">Google</a>
     </div>
   </form>
@@ -106,7 +109,7 @@
 {{end}}
 
 {{define "leaderboard"}}
-<label class="field">Leaderboard</label>
+<label class="field">All-time</label>
 {{if .Top}}
   {{range $i, $s := .Top}}
     <div class="player{{if and $.User (eq $s.PlayerID $.User.ID)}} me{{end}}">

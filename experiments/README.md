@@ -21,4 +21,4 @@ Rules of the room:
 
 | Experiment | Started | Status | Verdict |
 |---|---|---|---|
-| [deez-win](deez-win/) | 2026-08-29 | iteration 0 | playable end to end; UI unreviewed |
+| [deez-win](deez-win/) | 2026-08-29 | iteration 1 | Cala pipeline rebuilt on the real API, UI redesigned; awaiting a key for the first live probe |

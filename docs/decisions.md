@@ -76,3 +76,27 @@ the argument for keeping branches short rather than for avoiding them.
 `.github/workflows/check.yml` gates every PR on gofmt, vet, test, build, shell
 syntax for the deploy scripts, and an obvious-credential scan. Deploys stay on
 `main` only, so a PR can prove it builds but can never ship.
+
+### 2026-08-29 — A Cala topic is a set; axes must be shared by three entities
+
+Cala's graph is entity-shaped (companies, people, countries, filings), so a
+player's topic is resolved through the query endpoint to a *set* of entities,
+not matched to a category. A sub-topic is only offered when at least three of
+those entities have it: an axis one entity holds cannot become a "which of
+these" question. Ranking prefers numbers people have intuitions for (headcount,
+founding date, revenue) over accounting line items and addresses.
+
+Distractors for fact questions are the other entities' values on the same axis,
+never entity names — the earlier code could offer "Stripe" as an answer to
+"headquarters?".
+
+The `-probe` flag prints what a topic resolves to; it is the measurement behind
+the experiment's first kill criterion and should be run before any topic is
+suggested on the home screen.
+
+### 2026-08-29 — Secrets are entered through a hidden prompt, never pasted
+
+`ops/set-cala-key` reads the key with a silent prompt and writes it to `.env`
+and the VPS env file over SSH. A key pasted into an agent chat lands in the
+session transcript Entire captures; a key on a command line lands in shell
+history. Both would then need rotating.
