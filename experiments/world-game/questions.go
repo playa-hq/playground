@@ -81,14 +81,20 @@ func (s *Server) numericQuestions(ctx context.Context, r *Room, st SubTopic, ent
 		if a.val == b.val {
 			continue // no defensible answer
 		}
+		prompt, lowerWins := numericPrompt(st.Label, st.Key)
+		// The pool is sorted ascending, so b is the larger of the pair.
+		answer, src := 1, b.src
+		if lowerWins {
+			answer, src = 0, a.src
+		}
 		out = append(out, &Question{
 			Kind:      "higher_lower",
-			Prompt:    fmt.Sprintf("Which has the higher %s?", strings.ToLower(st.Label)),
+			Prompt:    prompt,
 			Options:   []string{a.name, b.name},
-			Answer:    1, // pool is ascending, so b is always the larger
-			Fact:      fmt.Sprintf("%s: %s — %s: %s", a.name, formatNum(a.val), b.name, formatNum(b.val)),
-			Source:    b.src.Name,
-			SourceURL: b.src.URL,
+			Answer:    answer,
+			Fact:      fmt.Sprintf("%s: %s — %s: %s", a.name, formatValue(st.Key, a.val), b.name, formatValue(st.Key, b.val)),
+			Source:    src.Name,
+			SourceURL: src.URL,
 			SeededBy:  st.ClaimedBy,
 		})
 	}

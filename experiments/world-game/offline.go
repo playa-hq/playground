@@ -116,16 +116,17 @@ func offlineQuestions(r *Room) []*Question {
 				if !aok || !bok || av == bv {
 					continue
 				}
+				prompt, lowerWins := numericPrompt(st.Label, st.Key)
 				answer := 0
-				if bv > av {
+				if (bv > av) != lowerWins {
 					answer = 1
 				}
 				out = append(out, &Question{
 					Kind:     "higher_lower",
-					Prompt:   fmt.Sprintf("Which has the higher %s?", lower(st.Label)),
+					Prompt:   prompt,
 					Options:  []string{a.name, b.name},
 					Answer:   answer,
-					Fact:     fmt.Sprintf("%s: %s · %s: %s", a.name, formatNum(av), b.name, formatNum(bv)),
+					Fact:     fmt.Sprintf("%s: %s · %s: %s", a.name, formatValue(st.Key, av), b.name, formatValue(st.Key, bv)),
 					Source:   "offline fixture",
 					SeededBy: st.ClaimedBy,
 				})
