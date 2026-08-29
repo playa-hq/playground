@@ -113,8 +113,8 @@ with sources. This is the tool behind kill criterion #1.
 Set the key without it touching a shell history, transcript or git:
 
 ```bash
-./ops/set-cala-key          # hidden prompt → ../../.env and the VPS, restarts the service
-./ops/set-cala-key --local  # just .env
+./ops/set-secret CALA_API_KEY   # hidden prompt → ../../.env and the VPS, restarts the service
+./ops/set-secret FAL_KEY --local  # just .env
 ```
 
 `cala_test.go` runs the whole pipeline against a mock of the documented
@@ -134,6 +134,26 @@ and a second concurrent query 429s. So:
   axes are ranked — while players are still claiming. Claims read from the
   cache, so the round builds instantly once the last pick lands.
 - 429s back off in 10s steps, up to four tries.
+
+## Cover art (fal.ai)
+
+When a topic resolves, `fal.go` renders it in the background and hangs a
+**transparent PNG** on the room, shown in the topic strip and on the building
+screen. Two models, chained synchronously over `fal.run`:
+
+1. `fal-ai/flux/schnell` — four-step FLUX, ~2s. The prompt asks for one bold
+   sticker-style subject on a flat white ground, and names the first three
+   entities the graph found, so "Big Tech" draws Apple/Microsoft/NVIDIA rather
+   than a vague skyline.
+2. `fal-ai/birefnet` — segmentation cut-out to RGBA. If it fails, the white
+   image is used rather than nothing.
+
+Covers are cached per topic for the process lifetime. The step shows in the
+loading graph as *Cover art · fal*. Needs `FAL_KEY` (`./ops/set-secret
+FAL_KEY`); without it the step reads "no FAL_KEY" and the game is unchanged.
+`fal_test.go` runs the chain against a mock of both models' documented shapes.
+Model choice is a first pass — swap `falImageModel` for something stronger
+(Recraft, FLUX dev) once the look is decided.
 
 ## The loading graph
 
@@ -216,6 +236,8 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
 - **The UI has been rendered headlessly (home, axes, quiz, results) but not
   played by hand in a real browser.** htmx swaps, the bonus bar restart and
   the keyboard answers still want a human check.
+- **Cover art has not been generated with a real key yet** — the chain is
+  verified against a mock only.
 - **A typed topic costs up to a minute the first time.** Cached and warmed
   topics are instant; anything new sits on the building screen. Whether
   players tolerate that is a playtest question, and it presses on the

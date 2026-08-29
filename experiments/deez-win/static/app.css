@@ -439,3 +439,41 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
   .sparkles { display: none; }
   .hero-line, .play-strip, .join-strip, .grid3 { animation: none; }
 }
+
+/* ---- account menu (top right) ------------------------------------------ */
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; }
+.menu summary::-webkit-details-marker { display: none; }
+.who {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;
+  padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink);
+  background: rgba(0,0,0,.12);
+}
+.who.guest { border-style: dashed; color: var(--muted); }
+.who:hover, .menu[open] .who { border-color: var(--accent); color: var(--ink); }
+.pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: 280px;
+  background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 16px;
+  box-shadow: var(--lift); animation: enter .2s cubic-bezier(.2,1.4,.4,1) both;
+}
+.pop .stack > * + * { margin-top: 10px; }
+.pop .btn { display: block; margin-top: 10px; width: 100%; }
+.pop p { margin: 0 0 10px; }
+.pop .btn.google, .google { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.google .g {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--paper); color: var(--paper-ink);
+  font-family: 'Excalifont', sans-serif; font-size: 13px; display: grid; place-items: center;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; position: relative; z-index: 1; animation: enter .6s 1.1s both; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* ---- covers (fal) ------------------------------------------------------- */
+.cover {
+  display: block; width: 100%; height: auto; max-width: 220px; margin: 4px auto 10px;
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,.35));
+  animation: pop .6s cubic-bezier(.2,1.6,.4,1) both;
+}
+.big-cover { max-width: 300px; margin: 14px auto; }
+@keyframes pop { from { opacity: 0; transform: scale(.6) rotate(-6deg); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cover, .pop { animation: none; } }

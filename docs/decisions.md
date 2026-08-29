@@ -96,7 +96,7 @@ suggested on the home screen.
 
 ### 2026-08-29 — Secrets are entered through a hidden prompt, never pasted
 
-`ops/set-cala-key` reads the key with a silent prompt and writes it to `.env`
+`ops/set-secret <NAME>` reads the key with a silent prompt and writes it to `.env`
 and the VPS env file over SSH. A key pasted into an agent chat lands in the
 session transcript Entire captures; a key on a command line lands in shell
 history. Both would then need rotating.
@@ -113,3 +113,19 @@ shape, would cost entities × axes calls and never finish inside the limit.
 
 The same limit is why loading is shown as a graph rather than a spinner: with
 a minute of real waiting in the round, players should see what is arriving.
+
+### 2026-08-29 — Cover art is a two-model chain, cut out to transparency
+
+FLUX schnell draws the subject on a flat white ground; BiRefNet cuts it out to
+an RGBA PNG. Asking a generator for "transparent background" does not work —
+diffusion models emit opaque pixels — so transparency is a second, cheap
+segmentation step rather than a prompt. Covers are decorative and cached per
+topic; a fal failure degrades to the opaque image, then to no image, and never
+touches the round.
+
+### 2026-08-29 — Account lives in the top-right menu
+
+Sign-in was a card in the grid competing with the game. It is now a `<details>`
+menu on the top bar (no JS): a guest sees their name and "sign in", a signed-in
+player sees their name and an email; the popover holds the magic-link form and
+Google. Same markup on the room page minus the popover.

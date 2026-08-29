@@ -29,6 +29,7 @@ func main() {
 	flag.Parse()
 
 	cala := NewCala(os.Getenv("CALA_API_KEY"))
+	fal := NewFal(os.Getenv("FAL_KEY"))
 	if *probe != "" {
 		os.Exit(runProbe(cala, *probe))
 	}
@@ -55,6 +56,7 @@ func main() {
 		origin:   *origin,
 		store:    NewStore(),
 		cala:     cala,
+		fal:      fal,
 	}
 
 	mux := http.NewServeMux()
@@ -66,6 +68,11 @@ func main() {
 	}
 	mux.Handle("GET /", http.FileServer(http.FS(sub)))
 
+	if fal.Enabled() {
+		log.Printf("fal: enabled (%s → %s)", falImageModel, falCutModel)
+	} else {
+		log.Printf("fal: no FAL_KEY — no cover art")
+	}
 	if cala.Enabled() {
 		log.Printf("cala: enabled")
 		cala.Warm(CalaTopicSuggestions())
