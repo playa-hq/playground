@@ -24,6 +24,12 @@ type D3bitUser struct {
 	Username    string `json:"username"`
 }
 
+// isSecureRequest returns true if the request arrived over HTTPS.
+// Nginx sets X-Forwarded-Proto when proxying; localhost defaults to false.
+func isSecureRequest(r *http.Request) bool {
+	return r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
 type cachedUser struct {
 	user      *D3bitUser
 	expiresAt time.Time
@@ -90,10 +96,11 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	secure := isSecureRequest(r)
 	for k, vv := range resp.Header {
 		for _, v := range vv {
 			if strings.EqualFold(k, "Set-Cookie") {
-				w.Header().Add("Set-Cookie", rewriteCookie(v))
+				w.Header().Add("Set-Cookie", rewriteCookie(v, secure))
 				continue
 			}
 			w.Header().Add(k, v)
@@ -137,6 +144,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		Value:    out.Data.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   isSecureRequest(r),
 		MaxAge:   30 * 24 * 60 * 60,
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -170,11 +178,17 @@ func (a *Auth) Bootstrap(w http.ResponseWriter, r *http.Request) *D3bitUser {
 	if json.NewDecoder(resp.Body).Decode(&env) != nil || env.Data.User.ID == "" {
 		return nil
 	}
+	secure := isSecureRequest(r)
 	for _, c := range resp.Cookies() {
 		if c.Name == "d3_session" {
 			http.SetCookie(w, &http.Cookie{
-				Name: c.Name, Value: c.Value, Path: "/",
-				HttpOnly: true, MaxAge: 30 * 24 * 60 * 60, SameSite: http.SameSiteLaxMode,
+				Name:     c.Name,
+				Value:    c.Value,
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   secure,
+				MaxAge:   30 * 24 * 60 * 60,
+				SameSite: http.SameSiteLaxMode,
 			})
 			// Cache under the new token so the very next call resolves.
 			a.mu.Lock()
@@ -243,9 +257,10 @@ func (a *Auth) User(r *http.Request) *D3bitUser {
 }
 
 // rewriteCookie re-scopes an upstream Set-Cookie to this origin: Domain is
-// dropped, and SameSite=None (which requires Secure) becomes Lax so the cookie
-// still works over plain http on localhost.
-func rewriteCookie(setCookie string) string {
+// dropped, and SameSite=None (which requires Secure) becomes Lax. When the
+// request arrived over HTTPS, Secure is preserved; otherwise it is stripped
+// to allow local development over plain HTTP.
+func rewriteCookie(setCookie string, secure bool) string {
 	var out []string
 	for _, part := range strings.Split(setCookie, ";") {
 		trimmed := strings.TrimSpace(part)
@@ -254,6 +269,9 @@ func rewriteCookie(setCookie string) string {
 		case strings.HasPrefix(lower, "domain="):
 			continue
 		case lower == "secure":
+			if secure {
+				out = append(out, trimmed)
+			}
 			continue
 		case strings.HasPrefix(lower, "samesite=none"):
 			out = append(out, "SameSite=Lax")
