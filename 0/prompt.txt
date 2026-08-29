@@ -1,5 +1,1 @@
-on main page there is too much stuff, make it so that its like, just ''Play'' button and after clicking you get sent to another page where you can then from now on create or join a lobby. Push to main
-
----
-
 the homepage looks bad, too much free space, but the concept is okay, push to main
