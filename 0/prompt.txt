@@ -1,0 +1,5 @@
+when creating a lobby also make an option of how many questions you want in the game, make options of 5, 10, 15 questions , push to main
+
+---
+
+when the game ends, there is the receipt of summary, find and  make it as  realistic receipt rolling down, keep the design tho, i like it, then when done push to main
