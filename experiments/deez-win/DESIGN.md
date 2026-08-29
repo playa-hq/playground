@@ -5,7 +5,7 @@
 **A field guide to facts after dark.** Deez.win makes a verified data graph feel
 like a place to explore, rather than a sterile dashboard or a retro arcade.
 Every screen sits on the same near-black field with layered charcoal surfaces.
-Mint marks action and live state, amber marks score, and coral marks errors.
+Mint marks action and live state, amber marks aura, and coral marks larp.
 
 ## Bet
 
@@ -29,8 +29,8 @@ without competing with the fact, source and answer.
 | Charcoal | `--panel` `#101216` | cards and menus |
 | Raised | `--panel-2` `#191C22` | interactive surfaces |
 | Mint | `--accent` `#72F1C6` | primary action, focus and live state |
-| Amber | `--gold` `#FFC857` | score and earned emphasis |
-| Coral | `--danger` `#FF6B81` | errors and misses |
+| Amber | `--gold` `#FFC857` | aura and earned emphasis |
+| Coral | `--danger` `#FF6B81` | larp, errors and misses |
 | Paper | `--paper` `#F1EEE7` | sourced answer receipts only |
 | Display | Excalifont | logo, question prompt, headings |
 | Reading/data | DM Mono | controls, values, body copy |
@@ -43,7 +43,9 @@ without competing with the fact, source and answer.
   transparent or surfaced.
 - Facts and citations use the paper receipt treatment, never a celebratory treatment. They
   are evidence, not a reward.
-- Color is semantic and sparse: mint for action/live, amber for score, coral
+- Correct answers earn aura; misses apply larp. Never call either generic points
+  in player-facing copy.
+- Color is semantic and sparse: mint for action/live, amber for aura, coral
   for error. Player dots may keep their identity color.
 - Layouts collapse to one column before controls get crowded; touch targets
   stay at least 44px high on phones.

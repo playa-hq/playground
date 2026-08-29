@@ -52,7 +52,7 @@
     <span class="name">{{.DisplayName}}{{if eq .ID $.Me}} <span class="muted small">(you)</span>{{end}}</span>
     {{if eq .ID $.Picking}}<span class="tag live">picking</span>{{end}}
     {{if .IsHost}}<span class="tag">host</span>{{end}}
-    <span class="score">{{.Score}}</span>
+    <span class="score"><strong>{{.Score}}</strong><small>aura</small></span>
   </div>
 {{end}}
 {{if .Room.Loads}}

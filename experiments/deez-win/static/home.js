@@ -1,5 +1,5 @@
-/* Home-page motion: a magnetic play button and a wordmark squish on press.
- * All decorative — the page works with this file gone. */
+/* Shared motion: every action leans toward the pointer and springs home.
+ * Event delegation also covers buttons that htmx swaps in later. */
 (function () {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce) return;
@@ -12,20 +12,37 @@
     ['pointerup', 'pointerleave'].forEach((e) => mark.addEventListener(e, () => mark.classList.remove('pressed')));
   }
 
-  // Magnetic button: the label leans toward the cursor and springs back.
-  document.querySelectorAll('.magnet').forEach((btn) => {
-    const inner = btn.firstElementChild || btn;
-    btn.addEventListener('pointermove', (e) => {
-      const r = btn.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-      const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-      btn.style.transform = `translate(${dx * 10}px, ${dy * 8}px)`;
-      inner.style.transform = `translate(${dx * 6}px, ${dy * 4}px)`;
-      btn.style.transition = inner.style.transition = 'transform .08s linear';
-    });
-    btn.addEventListener('pointerleave', () => {
-      btn.style.transition = inner.style.transition = 'transform .6s cubic-bezier(.2,2,.4,1)';
-      btn.style.transform = inner.style.transform = '';
-    });
+  function actionAt(target) {
+    return target instanceof Element ? target.closest('button, .btn') : null;
+  }
+
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
+    const btn = actionAt(e.target);
+    if (!btn || btn.matches(':disabled')) return;
+    const r = btn.getBoundingClientRect();
+    const dx = (e.clientX - (r.left + r.width / 2)) / Math.max(1, r.width);
+    const dy = (e.clientY - (r.top + r.height / 2)) / Math.max(1, r.height);
+    const pull = btn.classList.contains('magnet') ? 9 : 4;
+    btn.style.transition = 'transform .08s linear';
+    btn.style.transform = `translate3d(${dx * pull}px, ${dy * pull * .7}px, 0) rotate(${dx * .8}deg)`;
+
+    const label = btn.classList.contains('magnet') ? btn.querySelector('span') : null;
+    if (label) {
+      label.style.transition = 'transform .08s linear';
+      label.style.transform = `translate3d(${dx * 5}px, ${dy * 3}px, 0)`;
+    }
+  });
+
+  document.addEventListener('pointerout', (e) => {
+    const btn = actionAt(e.target);
+    if (!btn || (e.relatedTarget instanceof Node && btn.contains(e.relatedTarget))) return;
+    btn.style.transition = 'transform .55s cubic-bezier(.2,2,.4,1)';
+    btn.style.transform = '';
+    const label = btn.classList.contains('magnet') ? btn.querySelector('span') : null;
+    if (label) {
+      label.style.transition = 'transform .55s cubic-bezier(.2,2,.4,1)';
+      label.style.transform = '';
+    }
   });
 })();

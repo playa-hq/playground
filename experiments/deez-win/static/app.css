@@ -177,12 +177,14 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .player:last-child { border-bottom: 0; }
 .dot { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
 .player .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.player .score { font-family: 'Excalifont', monospace; font-size: 12px; color: var(--gold); }
+.player .score { display: inline-flex; align-items: baseline; gap: 5px; font-family: 'Excalifont', monospace; color: var(--gold); }
+.player .score strong { font-size: 13px; font-weight: 400; }
+.player .score small { color: #8D7847; font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
 .player.me { background: rgba(114,241,198,.07); border-radius: 8px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
 .player .games { flex: 0 0 auto; opacity: .7; }
 .rank { font-size: 12px; width: 22px; }
 .player.winner { background: rgba(255,200,87,.08); border-radius: 8px; margin: 0 -6px; padding: 12px 6px; border-bottom: 0; }
-.player.winner .score { font-size: 16px; }
+.player.winner .score strong { font-size: 17px; }
 
 .topic-strip { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .topic-name { font-size: 12px; color: var(--accent); text-transform: uppercase; word-break: break-word; }
@@ -275,7 +277,7 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .choice.wrong { border-color: var(--danger); background: rgba(255,107,129,.09); }
 .hint { margin: 14px 0 0; }
 
-/* The speed bonus: 50 points draining to zero over ten seconds, the same
+/* The speed bonus: 50 aura draining to zero over ten seconds, the same
  * curve the server scores. Replaced (not morphed) per question via its id,
  * so the animation starts fresh each time. */
 .bonus { height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin: 12px 0 0; }
@@ -628,9 +630,9 @@ body:has(.home-shell)::after {
 }
 .home-brand img { width: 32px; height: 32px; object-fit: contain; filter: contrast(1.25); }
 .hero-big {
-  min-height: 0; width: min(1260px, 100%); margin: 0 auto;
-  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr);
-  align-items: center; gap: clamp(32px, 6vw, 100px); padding: 5vh 0;
+  min-height: 0; width: min(1080px, 100%); margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr);
+  align-items: center; gap: clamp(28px, 5vw, 72px); padding: 5vh 0;
 }
 .home-copy { position: relative; z-index: 2; }
 .home-kicker {
@@ -664,16 +666,15 @@ body:has(.home-shell)::after {
   margin: 24px 0 0; color: #6F7783; font-size: 10px;
   letter-spacing: .12em; text-transform: uppercase;
 }
-.home-art { min-height: min(64vh, 650px); position: relative; display: grid; place-items: center; }
+.home-art { min-height: min(48vh, 440px); position: relative; display: grid; place-items: center; }
 .home-art img {
-  --roll-left: -20px; --roll-right: 28px; --roll-hop: -22px;
-  --roll-mid-left: -10px; --roll-mid-up: -8px; --roll-nudge: 7px;
-  width: min(52vw, 650px); height: auto; position: relative; z-index: 2;
-  filter: grayscale(1) contrast(1.12) drop-shadow(0 42px 42px rgba(0,0,0,.7));
-  animation: hero-die-roll 6.4s infinite; will-change: transform;
+  --roll-x: 12px; --roll-neg-x: -12px; --roll-y: -8px;
+  width: min(30vw, 350px); height: auto; position: relative; z-index: 2;
+  filter: grayscale(1) contrast(1.1) drop-shadow(0 30px 30px rgba(0,0,0,.62));
+  animation: hero-die-roll 9s linear infinite; will-change: transform;
 }
 .die-orbit {
-  position: absolute; width: min(42vw, 520px); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.32);
+  position: absolute; width: min(26vw, 290px); aspect-ratio: 1; border: 1px solid rgba(255,255,255,.22);
   border-radius: 50%; transform: rotateX(70deg) rotateZ(-14deg); box-shadow: inset 0 0 60px rgba(255,255,255,.03);
 }
 .die-note {
@@ -683,13 +684,11 @@ body:has(.home-shell)::after {
 .note-top { right: 2%; top: 12%; }
 .note-bottom { left: 2%; bottom: 12%; transform: rotate(180deg); }
 @keyframes hero-die-roll {
-  0%, 52% { transform: translate3d(0,0,0) rotate(0deg); animation-timing-function: cubic-bezier(.55,.05,.7,.35); }
-  60% { transform: translate3d(var(--roll-left), -14px, 0) rotate(-86deg) scale(1.02); }
-  68% { transform: translate3d(var(--roll-right), var(--roll-hop), 0) rotate(-182deg) scale(.99); }
-  76% { transform: translate3d(var(--roll-mid-left), var(--roll-mid-up), 0) rotate(-276deg) scale(1.015); }
-  84% { transform: translate3d(var(--roll-nudge), 0, 0) rotate(-354deg) scale(.99); animation-timing-function: cubic-bezier(.2,.8,.25,1); }
-  89% { transform: translate3d(-3px,-2px,0) rotate(-366deg) scale(1.005); }
-  94%, 100% { transform: translate3d(0,0,0) rotate(-360deg); }
+  0% { transform: translate3d(0,0,0) rotate(0deg); }
+  25% { transform: translate3d(var(--roll-x), var(--roll-y), 0) rotate(-90deg); }
+  50% { transform: translate3d(0,0,0) rotate(-180deg); }
+  75% { transform: translate3d(var(--roll-neg-x), var(--roll-y), 0) rotate(-270deg); }
+  100% { transform: translate3d(0,0,0) rotate(-360deg); }
 }
 .home-foot {
   position: relative; left: auto; right: auto; bottom: auto; z-index: 2;
@@ -708,11 +707,10 @@ body:has(.home-shell)::after {
   .home-shell .play-strip { justify-content: center; margin-top: 26px; }
   .home-art { min-height: 30vh; order: -1; margin-bottom: -3vh; }
   .home-art img {
-    --roll-left: -10px; --roll-right: 15px; --roll-hop: -12px;
-    --roll-mid-left: -6px; --roll-mid-up: -5px; --roll-nudge: 4px;
-    width: min(76vw, 380px);
+    --roll-x: 7px; --roll-neg-x: -7px; --roll-y: -5px;
+    width: min(54vw, 250px);
   }
-  .die-orbit { width: min(64vw, 320px); }
+  .die-orbit { width: min(48vw, 220px); }
   .die-note { display: none; }
   .home-foot { font-size: 8px; letter-spacing: .08em; }
 }
@@ -804,8 +802,8 @@ body:has(.home-shell)::after {
   .home-shell { padding: 18px 16px 16px; }
   .home-brand img { width: 28px; height: 28px; }
   .hero-big { padding: 3vh 0 2vh; }
-  .home-art { min-height: 25vh; margin-bottom: -2vh; }
-  .home-art img { width: min(70vw, 320px); }
+  .home-art { min-height: 20vh; margin-bottom: 0; }
+  .home-art img { width: min(48vw, 210px); }
   .home-shell .wordmark { font-size: clamp(42px, 13.5vw, 68px); }
   .home-shell .hero-line { margin-top: 18px; line-height: 1.55; }
   .home-shell .play-strip { width: 100%; margin-top: 22px; }

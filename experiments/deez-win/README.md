@@ -45,7 +45,7 @@ with a code, browse public lobbies, and manage their account.
 
 - **Anonymous auth via D3BIT** — `POST /auth/anon` gives every player a name and
   colour with no signup. Email magic-link and Google sign-in upgrade the account
-  and keep the score.
+  and keep their aura.
 - **Dice roll** decides turn order; ties break on join order so the ordering is
   always strict.
 - **Topic pick** by the roll winner, then each remaining player claims one of the
@@ -53,8 +53,9 @@ with a code, browse public lobbies, and manage their account.
   numeric axes first because those make the best questions.
 - **Questions** are higher/lower on a numeric axis (no model involved at all) or
   multiple choice from a property, with distractors drawn from sibling entities.
-- **Scoring** is speed-weighted, and you score **half** on questions from the
-  axis you personally claimed.
+- **Aura and larp** replace generic points. Correct answers earn 100 aura plus
+  up to 50 speed aura; a miss applies 25 larp. You earn **half aura** on
+  questions from the axis you personally claimed.
 - **Every answer shows its source** — the fact and its citation, which is the
   informative half of the game.
 
@@ -214,11 +215,11 @@ that next screen, so the front door stays focused even as the game changes.
 
 An arcade cabinet that prints receipts. Every page uses the same near-black
 field and charcoal surfaces. Excalifont handles the cabinet hierarchy
-(codes, scores, headers), DM Mono anything a person reads. Mint
-means live/correct, amber means points, coral means error, and the **receipt** — the
+(codes, aura, headers), DM Mono anything a person reads. Mint
+means live/correct, amber means aura, coral means larp, and the **receipt** — the
 answer reveal and the end-of-round review — is the one paper-coloured thing on
 screen, because the proof should look different from the play. A ten-second
-gold bar drains at the same rate the server pays the speed bonus; keys 1–4
+amber bar drains at the same rate the server pays speed aura; keys 1–4
 answer; the entities the graph resolved are shown as chips so players see the
 topic became something concrete.
 
@@ -264,10 +265,10 @@ house style; this deliberately isn't, because at 2am a toolchain is a liability.
 
 All-time standings persist to a JSON file (`-leaderboard`, default alongside the
 binary), written through a temp file so a crash cannot truncate it. Rooms stay
-in memory — they are throwaway — but a score is the one thing worth surviving a
+in memory — they are throwaway — but aura is the one thing worth surviving a
 deploy, and it gives the home screen the panel the original sketch always had.
 
-Ties on top score count as a win for everyone who reached it: with 2-4 players
+Ties on top aura count as a win for everyone who reached it: with 2-4 players
 ties are common enough that breaking them arbitrarily reads as a bug.
 
 ## Notes

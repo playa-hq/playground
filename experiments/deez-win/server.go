@@ -572,19 +572,7 @@ func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 	correct := choice == q.Answer
 	elapsed := int(time.Since(room.questionAt).Milliseconds())
 
-	points := 0
-	if correct {
-		// Speed matters, but never more than being right: 100 base, up to 50
-		// more for answering inside the first ten seconds.
-		points = 100
-		if bonus := 50 - elapsed/200; bonus > 0 {
-			points += bonus
-		}
-		// You seeded this axis, so you get less for knowing it.
-		if q.SeededBy == u.ID {
-			points /= 2
-		}
-	}
+	points := auraDelta(correct, elapsed, q.SeededBy == u.ID)
 	me.Score += points
 	me.answered[index] = true
 	q.Answers = append(q.Answers, Answer{PlayerID: u.ID, Choice: choice, Correct: correct, Points: points, Elapsed: elapsed})
@@ -602,6 +590,22 @@ func (s *Server) handleAnswer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	render(w, http.StatusOK, panelTmpl, "panel", v)
+}
+
+// auraDelta is positive aura for a correct answer and negative larp for a
+// miss. Speed can add up to 50 aura; knowing the axis you seeded pays half.
+func auraDelta(correct bool, elapsed int, seeded bool) int {
+	if !correct {
+		return -25
+	}
+	aura := 100
+	if bonus := 50 - elapsed/200; bonus > 0 {
+		aura += bonus
+	}
+	if seeded {
+		aura /= 2
+	}
+	return aura
 }
 
 // actor resolves the (player, room) pair every game action needs.

@@ -97,6 +97,8 @@ type questionView struct {
 	Answered   bool
 	WasCorrect bool
 	Seeded     bool
+	Aura       int
+	Larp       int
 	Fact       string
 	Source     string
 	SourceURL  string
@@ -245,6 +247,11 @@ func questionViewFor(room *Room, q *Question, me string) *questionView {
 		if a.PlayerID == me {
 			myChoice = a.Choice
 			qv.WasCorrect = a.Correct
+			if a.Points > 0 {
+				qv.Aura = a.Points
+			} else if a.Points < 0 {
+				qv.Larp = -a.Points
+			}
 		}
 	}
 

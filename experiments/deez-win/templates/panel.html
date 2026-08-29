@@ -106,10 +106,10 @@
          {{if .Answered}}data-sfx="{{if .WasCorrect}}correct{{else}}wrong{{end}}"{{end}}>
       <div class="row spread small muted">
         <span class="pixel">Q{{.Number}}<span class="dim">/{{$.Room.QuestionCount}}</span></span>
-        {{if .Seeded}}<span class="tag warn">your axis · half points</span>{{end}}
+        {{if .Seeded}}<span class="tag warn">your axis · half aura</span>{{end}}
       </div>
       <!-- Keyed by index so the morph replaces it and the bonus drain restarts. -->
-      <div class="bonus" id="bonus-{{.Index}}" title="speed bonus"><i class="{{if .Answered}}stopped{{end}}"></i></div>
+      <div class="bonus" id="bonus-{{.Index}}" title="speed aura"><i class="{{if .Answered}}stopped{{end}}"></i></div>
       <p class="prompt">{{.Prompt}}</p>
       <div class="choices">
         {{range .Choices}}
@@ -124,7 +124,7 @@
       </div>
       {{if .Answered}}
         <div class="receipt {{if .WasCorrect}}ok{{else}}miss{{end}}">
-          <div class="receipt-head pixel">{{if .WasCorrect}}CORRECT{{else}}MISS{{end}}</div>
+          <div class="receipt-head pixel">{{if .WasCorrect}}CORRECT · +{{.Aura}} AURA{{else}}MISS · {{.Larp}} LARP{{end}}</div>
           <div class="receipt-line">{{.Fact}}</div>
           {{with .Source}}
             <div class="receipt-src">SRC
@@ -150,7 +150,7 @@
         <span class="pixel rank">{{inc $i}}</span>
         <span class="dot" style="background:{{$p.Color}}"></span>
         <span class="name">{{$p.DisplayName}}{{if eq $i 0}} <span class="pixel small gold">WINS</span>{{end}}</span>
-        <span class="score">{{$p.Score}}</span>
+        <span class="score"><strong>{{$p.Score}}</strong><small>aura</small></span>
       </div>
     {{end}}
     <a class="btn primary big" href="/">Play again</a>

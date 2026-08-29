@@ -102,8 +102,8 @@ func (l *Leaderboard) Record(room *Room) {
 		return
 	}
 
-	best := 0
-	for _, p := range room.Players {
+	best := room.Players[0].Score
+	for _, p := range room.Players[1:] {
 		if p.Score > best {
 			best = p.Score
 		}
@@ -125,7 +125,7 @@ func (l *Leaderboard) Record(room *Room) {
 		// A shared top score counts for everyone who reached it: with 2-4
 		// players, ties are common enough that breaking them arbitrarily reads
 		// as a bug.
-		if p.Score == best && best > 0 {
+		if p.Score == best {
 			s.Wins++
 		}
 		s.LastSeen = time.Now()

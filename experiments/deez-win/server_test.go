@@ -24,6 +24,28 @@ func TestQuestionCount(t *testing.T) {
 	}
 }
 
+func TestAuraAndLarp(t *testing.T) {
+	tests := []struct {
+		name    string
+		correct bool
+		elapsed int
+		seeded  bool
+		want    int
+	}{
+		{"fast correct earns max aura", true, 0, false, 150},
+		{"slow correct earns base aura", true, 12000, false, 100},
+		{"seeded axis earns half aura", true, 0, true, 75},
+		{"miss applies larp", false, 0, false, -25},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := auraDelta(tt.correct, tt.elapsed, tt.seeded); got != tt.want {
+				t.Fatalf("auraDelta() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHomeHasOnlyPlayAction(t *testing.T) {
 	var out bytes.Buffer
 	v := homeView{Letters: strings.Split("DEEZ.WIN", "")}
@@ -39,6 +61,9 @@ func TestHomeHasOnlyPlayAction(t *testing.T) {
 	}
 	if !strings.Contains(html, `/dice-d6.png`) || !strings.Contains(html, "6 SIDES") || strings.Contains(html, "d12") {
 		t.Fatal("home does not use the six-sided die identity")
+	}
+	if strings.Count(html, `/home.js`) != 1 {
+		t.Fatal("shared button motion must load exactly once")
 	}
 }
 
@@ -80,6 +105,50 @@ func TestSharedDarkThemeIncludesMobileLayout(t *testing.T) {
 		if !strings.Contains(styles, want) {
 			t.Errorf("shared theme is missing %q", want)
 		}
+	}
+}
+
+func TestSharedButtonWiggleUsesDelegation(t *testing.T) {
+	js, err := staticFS.ReadFile("static/home.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	motion := string(js)
+	for _, want := range []string{"button, .btn", "pointermove", "pointerout"} {
+		if !strings.Contains(motion, want) {
+			t.Errorf("shared button motion is missing %q", want)
+		}
+	}
+}
+
+func TestNegativeAuraStillProducesAWinner(t *testing.T) {
+	board := NewLeaderboard("")
+	board.Record(&Room{Players: []*Player{
+		{ID: "least-larp", DisplayName: "Least Larp", Score: -25},
+		{ID: "most-larp", DisplayName: "Most Larp", Score: -50},
+	}})
+	top := board.Top(2)
+	if len(top) != 2 || top[0].PlayerID != "least-larp" || top[0].Wins != 1 {
+		t.Fatalf("negative-aura standings did not preserve the winner: %+v", top)
+	}
+}
+
+func TestAnswerReceiptNamesAuraAndLarp(t *testing.T) {
+	for name, question := range map[string]*questionView{
+		"aura": {Answered: true, WasCorrect: true, Aura: 140},
+		"larp": {Answered: true, WasCorrect: false, Larp: 25},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var out bytes.Buffer
+			v := &roomView{Room: &Room{Phase: PhaseQuiz, QuestionCount: 1}, Question: question}
+			if err := panelTmpl.ExecuteTemplate(&out, "panel", v); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]string{"aura": "+140 AURA", "larp": "25 LARP"}[name]
+			if !strings.Contains(out.String(), want) {
+				t.Fatalf("answer receipt is missing %q", want)
+			}
+		})
 	}
 }
 
