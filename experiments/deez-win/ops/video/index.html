@@ -7,19 +7,19 @@
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/app.css">
 <style>
-  .vid-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px; box-sizing: border-box; }
-  .vid-shell video { width: min(1100px, 100%); max-height: 78vh; background: #000; border-radius: 12px; outline: 1px solid rgba(255,255,255,.12); }
-  .vid-actions { display: flex; gap: 18px; align-items: center; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  .vid-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px; box-sizing: border-box; }
+  .vid-shell video { width: auto; height: 88vh; max-width: 100%; background: #000; border-radius: 12px; outline: 1px solid rgba(255,255,255,.12); }
+  .vid-actions { display: flex; gap: 22px; align-items: center; margin: 0; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
   .vid-actions a { color: inherit; }
+  @media (max-width: 700px) { .vid-shell video { width: 100%; height: auto; max-height: 88vh; } }
 </style>
 </head>
 <body>
 <main class="vid-shell">
-  <a href="/" aria-label="deez.win home"><img src="/playa-logo.png" alt="playa" style="height:72px"></a>
   <video controls playsinline preload="metadata" src="/video/playa.mp4"></video>
   <p class="vid-actions">
     <a href="/video/playa.mp4" download="playa.mp4">⤓ Download</a>
-    <a href="/">← deez.win</a>
+    <a href="/"><img src="/playa-logo.png" alt="deez.win" style="height:36px;vertical-align:middle"></a>
   </p>
 </main>
 </body>
