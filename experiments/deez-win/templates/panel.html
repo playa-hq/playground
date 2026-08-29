@@ -47,7 +47,11 @@
         <input type="text" name="topic" class="plain topic-input" placeholder="{{index .Suggestions 0}}…" autocomplete="off" autofocus required>
         <div class="row wrap">
           {{range .Suggestions}}
-            <button class="ghost small" name="topic" value="{{.}}" formnovalidate>{{.}}</button>
+            <!-- Own request, not the form's submitter: htmx 4 does not send
+                 the clicked button's name/value with a form post. -->
+            <button type="button" class="ghost small"
+                    hx-post="/rooms/{{$.Room.Code}}/topic"
+                    hx-vals='{"topic":"{{.}}"}'>{{.}}</button>
           {{end}}
         </div>
         <button class="primary big">Lock it in</button>
