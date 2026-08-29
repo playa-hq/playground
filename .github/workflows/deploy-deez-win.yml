@@ -14,10 +14,12 @@ on:
       - '!experiments/deez-win/**.md'
       - '!experiments/deez-win/ops/**'
   workflow_dispatch:
-    # Manual dispatch is restricted to main to prevent deploying unvalidated code.
-    # The check workflow (formatting, shell syntax, credential scan) only runs on
-    # PRs, so a branch that bypasses PR review also bypasses those validations.
-    branches: [main]
+    # Manual dispatch MUST be triggered from the main branch only. The workflow
+    # enforces this at runtime (see the verification step in the build job) because
+    # GitHub Actions does not support a branches filter on workflow_dispatch.
+    # Deploying from any other ref is blocked: the check workflow (formatting,
+    # shell syntax, credential scan) only runs on PRs, so a branch that bypasses
+    # PR review also bypasses those validations.
 
 concurrency:
   # Never let two deploys race for the same binary.
@@ -41,11 +43,16 @@ jobs:
 
       - name: Verify deployment from main branch
         run: |
+          # SECURITY CONTROL: Block deployment from any ref other than main.
+          # This prevents collaborators from using workflow_dispatch to deploy
+          # arbitrary branch code to production. Push deployments are already
+          # restricted to main by the on.push.branches filter, but workflow_dispatch
+          # has no equivalent filter, so this runtime check is the enforcement point.
           if [ "${{ github.ref }}" != "refs/heads/main" ]; then
             echo "::error::Deployment is only allowed from the main branch. Current ref: ${{ github.ref }}"
             exit 1
           fi
-          echo "Verified: deploying from main branch"
+          echo "Verified: deploying from main branch (commit ${{ github.sha }})"
 
       - uses: actions/setup-go@v5
         with:
