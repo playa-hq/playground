@@ -356,27 +356,28 @@ func (s *Server) illustrate(room *Room, topic string) {
 		return
 	}
 
-	// The graph's entities make the prompt concrete: "Big Tech" is vague,
-	// "Big Tech: Apple, Microsoft, NVIDIA" draws something.
-	subject := topic
+	// Industry values off the graph steer the picture; the topic text and
+	// entity names never reach the prompt (they come back as typeset text
+	// and logos).
+	var industries []string
 	room.mu.Lock()
-	if g := room.graph; g != nil && len(g.Entities) > 0 {
-		var names []string
-		for i, e := range g.Entities {
-			if i == 3 {
-				break
+	if g := room.graph; g != nil {
+		for _, d := range g.Details() {
+			if v, ok := d.Relations["OPERATES_IN_INDUSTRY"]; ok {
+				if str, ok := v.Value.(string); ok {
+					industries = append(industries, str)
+				}
 			}
-			names = append(names, e.Name)
 		}
-		subject = topic + " (" + strings.Join(names, ", ") + ")"
 	}
 	room.mu.Unlock()
+	objects := coverObjects(topic, industries)
 
 	room.progress("cover", "", StepRunning, "flux → cut-out", 0, 0)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	start := time.Now()
-	url, err := s.fal.Illustrate(ctx, subject)
+	url, err := s.fal.Illustrate(ctx, objects)
 	if err != nil {
 		log.Printf("fal: cover for %q: %v", topic, err)
 		room.progress("cover", "", StepFailed, "fal did not answer", 0, 0)
@@ -386,7 +387,7 @@ func (s *Server) illustrate(room *Room, topic string) {
 	room.mu.Lock()
 	room.Cover = url
 	room.mu.Unlock()
-	room.progress("cover", "", StepDone, fmt.Sprintf("transparent png in %s", time.Since(start).Round(time.Second)), 0, 0)
+	room.progress("cover", "", StepDone, fmt.Sprintf("%s · %s", joinObjects(objects), time.Since(start).Round(time.Second)), 0, 0)
 }
 
 // prefetchValues pulls every ranked axis for every entity as soon as the
