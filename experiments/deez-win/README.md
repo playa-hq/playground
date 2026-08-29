@@ -163,6 +163,12 @@ FAL_KEY`); without it the step reads "no FAL_KEY" and the game is unchanged.
 Model choice is a first pass — swap `falImageModel` for something stronger
 (Recraft, FLUX dev) once the look is decided.
 
+The first two quiz questions also get a neutral landscape illustration from
+`fal-ai/flux-2-pro`. Generated files are downloaded, checked as images, and
+served from `/question-images/`; production's `img-src 'self'` policy therefore
+does not block them and expiring fal CDN URLs never reach the browser. Image
+generation is optional and never changes grounded question or answer data.
+
 ## The loading graph
 
 Everything the round waits on is a `LoadStep` on the room — topic resolution,

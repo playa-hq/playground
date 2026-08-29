@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log"
@@ -29,7 +30,7 @@ type Server struct {
 	cala     *Cala
 	fal      *Fal
 	covers   sync.Map // topic key → cover path
-	coverPNG sync.Map // cover path → png bytes
+	images   sync.Map // same-origin path → fetchedImage
 	board    *Leaderboard
 }
 
@@ -58,7 +59,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /rooms", s.handleCreateRoom)
 	mux.HandleFunc("POST /join", s.handleJoin)
-	mux.HandleFunc("GET /covers/{file}", s.handleCover)
+	mux.HandleFunc("GET /covers/{file}", s.handleGeneratedImage)
+	mux.HandleFunc("GET /question-images/{file}", s.handleGeneratedImage)
 	mux.HandleFunc("GET /rooms/{code}", s.handleRoomPage)
 	mux.HandleFunc("GET /rooms/{code}/panel", s.handlePanel)
 	mux.HandleFunc("POST /rooms/{code}/roll", s.handleRoll)
@@ -358,16 +360,18 @@ func (s *Server) resolveTopicAsync(room *Room, picker, topic string) {
 	}
 }
 
-// handleCover serves a generated cover from memory. Immutable once made.
-func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
-	png, ok := s.coverPNG.Load(r.URL.Path)
+// handleGeneratedImage serves a downloaded fal image from memory. Immutable
+// once made, whether it belongs to a topic cover or a quiz question.
+func (s *Server) handleGeneratedImage(w http.ResponseWriter, r *http.Request) {
+	value, ok := s.images.Load(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
+	image := value.(fetchedImage)
+	w.Header().Set("Content-Type", image.contentType)
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
-	w.Write(png.([]byte))
+	_, _ = w.Write(image.data)
 }
 
 // coverSlug makes a topic key safe for a path.
@@ -427,19 +431,53 @@ func (s *Server) illustrate(room *Room, topic string) {
 		room.progress("cover", "", StepFailed, "fal did not answer", 0, 0)
 		return
 	}
-	png, err := s.fal.Fetch(ctx, url)
+	image, err := s.fal.Fetch(ctx, url)
 	if err != nil {
 		log.Printf("fal: fetch cover for %q: %v", topic, err)
 		room.progress("cover", "", StepFailed, "could not fetch the image", 0, 0)
 		return
 	}
 	path := "/covers/" + coverSlug(key) + ".png"
-	s.coverPNG.Store(path, png)
+	s.images.Store(path, image)
 	s.covers.Store(key, path)
 	room.mu.Lock()
 	room.Cover = path
 	room.mu.Unlock()
 	room.progress("cover", "", StepDone, fmt.Sprintf("%s · %s", joinObjects(objects), time.Since(start).Round(time.Second)), 0, 0)
+}
+
+// addQuestionImages generates a small, bounded batch. Each question is
+// independent and failures are deliberately non-fatal. Only downloaded,
+// same-origin URLs are attached to questions so production CSP permits them.
+func (s *Server) addQuestionImages(ctx context.Context, topic string, questions []*Question, limit int) {
+	if !s.fal.Enabled() || limit <= 0 {
+		return
+	}
+	limit = min(limit, len(questions))
+
+	var wg sync.WaitGroup
+	for i := 0; i < limit; i++ {
+		q := questions[i]
+		wg.Add(1)
+		go func(index int, question *Question) {
+			defer wg.Done()
+			remoteURL, err := s.fal.generateQuestionImage(ctx, topic, question)
+			if err != nil {
+				log.Printf("fal: question %d image skipped: %v", index+1, err)
+				return
+			}
+			image, err := s.fal.Fetch(ctx, remoteURL)
+			if err != nil {
+				log.Printf("fal: question %d image fetch skipped: %v", index+1, err)
+				return
+			}
+			sum := sha256.Sum256(image.data)
+			path := fmt.Sprintf("/question-images/%x", sum[:12])
+			s.images.Store(path, image)
+			question.ImageURL = path
+		}(i, q)
+	}
+	wg.Wait()
 }
 
 // prefetchValues pulls every ranked axis for every entity as soon as the
@@ -674,6 +712,9 @@ func (s *Server) startQuiz(room *Room) {
 
 	room.progress("questions", "Questions", StepRunning, "", 0, 0)
 	qs, err := s.buildQuestions(ctx, room)
+	if err == nil && len(qs) > 0 {
+		s.addQuestionImages(ctx, room.Topic, qs, 2)
+	}
 	if err != nil || len(qs) == 0 {
 		room.progress("questions", "", StepFailed, "no grounded questions", 0, 0)
 	} else {
