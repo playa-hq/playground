@@ -1,0 +1,100 @@
+name: deploy deez.win
+
+# Builds the binary in CI (the server has no Go toolchain) and ships it to the
+# VPS, mirroring the manual build → scp → systemctl restart flow used by the
+# other services on that box.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/deez-win/**'
+      - '.github/workflows/deploy-deez-win.yml'
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys race for the same binary.
+  group: deploy-deez-win
+  cancel-in-progress: false
+
+env:
+  APP: deez-win
+  BINARY: deezwin
+  REMOTE_DIR: /opt/deez-win
+  SERVICE: deez-win
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: experiments/deez-win
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: experiments/deez-win/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      # Static binary: the server has no Go and we don't want a libc dependency.
+      - name: Build
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_SHA::7}" -o "$BINARY" .
+          ls -lh "$BINARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deezwin-binary
+          path: experiments/deez-win/deezwin
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # A deploy touches a shared production host, so it is gated on an
+    # environment: add required reviewers there if you want a human in the loop.
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deezwin-binary
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Host key is pinned rather than auto-accepted, so a hijacked DNS
+          # answer cannot capture the deploy key.
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload binary
+        run: |
+          chmod +x deezwin
+          scp -O -i ~/.ssh/id_ed25519 deezwin \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:$REMOTE_DIR/$BINARY.new"
+
+      - name: Swap and restart
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "deez-win-deploy"
+
+      - name: Verify it came back up
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://deez.win/ || true)
+            if [ "$code" = "200" ]; then echo "deez.win is up"; exit 0; fi
+            echo "attempt $i: got '$code', retrying..."; sleep 3
+          done
+          echo "Site did not return 200 after deploy." >&2
+          exit 1

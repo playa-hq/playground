@@ -1,0 +1,24 @@
+#!/bin/sh
+# Install to /usr/local/bin/deez-win-ssh-guard (chmod 755).
+#
+# Forced command for the CI deploy key. The key can do exactly two things:
+# drop a binary at the upload path, and run the deploy script. Anything else —
+# a shell, a different path, port forwarding — is refused.
+#
+# Referenced from authorized_keys as:
+#   command="/usr/local/bin/deez-win-ssh-guard",restrict ssh-ed25519 AAAA... ci-deez-win
+#
+# `restrict` disables pty, agent/port/X11 forwarding in one go (OpenSSH 7.2+).
+
+case "$SSH_ORIGINAL_COMMAND" in
+  "scp -O -t /opt/deez-win/deezwin.new"|"scp -t /opt/deez-win/deezwin.new")
+    exec scp -t /opt/deez-win/deezwin.new
+    ;;
+  "deez-win-deploy")
+    exec /usr/local/bin/deez-win-deploy
+    ;;
+  *)
+    echo "deez-win: refused '${SSH_ORIGINAL_COMMAND:-interactive shell}'" >&2
+    exit 1
+    ;;
+esac

@@ -11,4 +11,4 @@ cd "$(dirname "$0")"
 ARGS=()
 [ "${1:-}" = "--dev" ] && ARGS+=(-dev-auth)
 
-go build -o worldgame . && exec ./worldgame -addr "${ADDR:-:8080}" "${ARGS[@]}"
+go build -o deezwin . && exec ./deezwin -addr "${ADDR:-:8080}" "${ARGS[@]}"

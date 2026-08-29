@@ -1,4 +1,4 @@
-// world-game — a multiplayer quiz where the questions come from a verified
+// deez.win — a multiplayer quiz where the questions come from a verified
 // entity graph rather than from a language model.
 //
 // The loop: players join a room, dice decide the order, the winner picks an

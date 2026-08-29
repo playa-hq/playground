@@ -1,0 +1,28 @@
+# Install to /etc/systemd/system/deez-win.service
+#
+# Matches the house pattern on `dice`: a static Go binary under /opt/<app>,
+# run as www-data, restarted on failure, fronted by nginx on localhost.
+
+[Unit]
+Description=deez.win — entity-graph quiz
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/deez-win
+ExecStart=/opt/deez-win/deezwin -addr 127.0.0.1:8087 -origin https://deez.win -d3bit https://api.d3bit.com
+EnvironmentFile=-/opt/deez-win/env
+Restart=always
+RestartSec=5
+
+# The binary needs no privileges beyond its own directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/deez-win
+
+[Install]
+WantedBy=multi-user.target

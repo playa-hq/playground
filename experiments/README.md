@@ -21,4 +21,4 @@ Rules of the room:
 
 | Experiment | Started | Status | Verdict |
 |---|---|---|---|
-| [world-game](world-game/) | 2026-08-29 | iteration 0 | playable end to end; UI unreviewed |
+| [deez-win](deez-win/) | 2026-08-29 | iteration 0 | playable end to end; UI unreviewed |

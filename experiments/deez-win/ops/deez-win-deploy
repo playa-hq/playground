@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Install to /usr/local/bin/deez-win-deploy (chmod 755).
+#
+# The only privileged thing CI can do. Swaps in the uploaded binary, restarts
+# the service, and rolls back if it fails to come up.
+set -euo pipefail
+
+DIR=/opt/deez-win
+BIN=deezwin
+SERVICE=deez-win
+
+[ -f "$DIR/$BIN.new" ] || { echo "no $DIR/$BIN.new to deploy" >&2; exit 1; }
+
+# Keep the outgoing binary so a bad deploy is one command from reverted.
+if [ -f "$DIR/$BIN" ]; then
+  cp -f "$DIR/$BIN" "$DIR/$BIN.prev"
+fi
+
+install -o www-data -g www-data -m 755 "$DIR/$BIN.new" "$DIR/$BIN"
+rm -f "$DIR/$BIN.new"
+
+systemctl restart "$SERVICE"
+sleep 2
+
+if ! systemctl is-active --quiet "$SERVICE"; then
+  echo "$SERVICE failed to start — rolling back" >&2
+  if [ -f "$DIR/$BIN.prev" ]; then
+    install -o www-data -g www-data -m 755 "$DIR/$BIN.prev" "$DIR/$BIN"
+    systemctl restart "$SERVICE"
+  fi
+  systemctl --no-pager --lines=30 status "$SERVICE" >&2 || true
+  exit 1
+fi
+
+echo "deployed: $(systemctl show -p ActiveEnterTimestamp --value "$SERVICE")"

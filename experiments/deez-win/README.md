@@ -1,6 +1,6 @@
-# world-game
+# deez.win
 
-**Started:** 2026-08-29 · **Status:** iteration 0 · **Owner:** _tbd_
+**Started:** 2026-08-29 · **Status:** iteration 0 · **Owner:** _tbd_ · **Live:** https://deez.win
 
 A 2–4 player quiz where the questions are built from a **verified entity graph**
 rather than written by a language model. Dice decide who picks the topic;
