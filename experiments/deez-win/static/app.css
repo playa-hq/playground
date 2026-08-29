@@ -633,6 +633,7 @@ body:has(.home-shell)::after {
   font-family: 'Excalifont', monospace; font-size: 13px; letter-spacing: .16em;
 }
 .home-brand img { width: 32px; height: 32px; object-fit: contain; filter: contrast(1.25); }
+.home-brand img.playa-logo { width: auto; height: 64px; filter: none; }
 .hero-big {
   min-height: 0; width: min(1080px, 100%); margin: 0 auto;
   display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr);
@@ -805,6 +806,7 @@ body:has(.home-shell)::after {
   .footer { margin-top: 28px; font-size: 8px; line-height: 1.7; letter-spacing: 1.2px; }
   .home-shell { padding: 18px 16px 16px; }
   .home-brand img { width: 28px; height: 28px; }
+  .home-brand img.playa-logo { width: auto; height: 48px; }
   .hero-big { padding: 3vh 0 2vh; }
   .home-art { min-height: 20vh; margin-bottom: 0; }
   .home-art img { width: min(48vw, 210px); }
