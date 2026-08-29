@@ -622,6 +622,9 @@ func (s *Server) startQuiz(room *Room) {
 
 	room.progress("questions", "Questions", StepRunning, "", 0, 0)
 	qs, err := s.buildQuestions(ctx, room)
+	if err == nil && len(qs) > 0 {
+		s.fal.AddQuestionImages(ctx, room.Topic, qs, 2)
+	}
 	if err != nil || len(qs) == 0 {
 		room.progress("questions", "", StepFailed, "no grounded questions", 0, 0)
 	} else {

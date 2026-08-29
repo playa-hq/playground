@@ -69,9 +69,9 @@ func main() {
 	mux.Handle("GET /", http.FileServer(http.FS(sub)))
 
 	if fal.Enabled() {
-		log.Printf("fal: enabled (%s → %s)", falImageModel, falCutModel)
+		log.Printf("fal: enabled (covers %s → %s; first 2 quiz questions %s)", falImageModel, falCutModel, falQuizModel)
 	} else {
-		log.Printf("fal: no FAL_KEY — no cover art")
+		log.Printf("fal: no FAL_KEY — no cover art; quiz remains text-only")
 	}
 	if cala.Enabled() {
 		log.Printf("cala: enabled")
