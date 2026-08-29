@@ -1,0 +1,1 @@
+commit and push / entire and stuff. i will create a new context and help team mates do work that can be merged nicely (everyone / agents would work on worktrees and prs that get merged agentically / manually)
