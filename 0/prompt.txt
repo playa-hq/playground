@@ -1,0 +1,1 @@
+gh repo push in new gh free org calling it "playaorg" (wdy think? or overkill), then we give access entire to the org and the hacking one etc and add them to the thing, make this repo playaorg/playground
