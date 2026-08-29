@@ -156,20 +156,31 @@
     <a class="btn primary big" href="/">Play again</a>
   </div>
   {{if .Review}}
-    <div class="card receipt-card">
-      <div class="receipt-head pixel">RECEIPT · {{.Room.Topic}}</div>
-      {{range .Review}}
-        <div class="review">
-          <div>{{.Prompt}} <strong class="accent">{{.Answer}}</strong></div>
-          {{with .Fact}}<div class="small muted">{{.}}</div>{{end}}
-          {{with .Source}}
-            <div class="receipt-src">SRC
-              {{if $.HasURLs}}<a href="{{.}}" target="_blank" rel="noopener">{{.}}</a>{{else}}{{.}}{{end}}
-            </div>
-          {{end}}
+    <div class="receipt-printer">
+      <div class="printer-head" aria-hidden="true">
+        <span class="printer-light"></span>
+        <span class="printer-slot"></span>
+      </div>
+      <div class="receipt-stage">
+        <div class="receipt-paper">
+          <div class="card receipt-card">
+            <div class="receipt-head pixel">RECEIPT · {{.Room.Topic}}</div>
+            {{range .Review}}
+              <div class="review">
+                <div>{{.Prompt}} <strong class="accent">{{.Answer}}</strong></div>
+                {{with .Fact}}<div class="small muted">{{.}}</div>{{end}}
+                {{with .Source}}
+                  <div class="receipt-src">SRC
+                    {{if $.HasURLs}}<a href="{{.}}" target="_blank" rel="noopener">{{.}}</a>{{else}}{{.}}{{end}}
+                  </div>
+                {{end}}
+              </div>
+            {{end}}
+            <div class="receipt-foot muted small">every line above has a source. none of it came from a model.</div>
+          </div>
         </div>
-      {{end}}
-      <div class="receipt-foot muted small">every line above has a source. none of it came from a model.</div>
+        <span class="receipt-curl" aria-hidden="true"></span>
+      </div>
     </div>
   {{end}}
 {{end}}

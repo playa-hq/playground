@@ -51,3 +51,32 @@ func TestLobbyOffersQuestionCounts(t *testing.T) {
 		}
 	}
 }
+
+func TestResultsRenderReceiptPrinter(t *testing.T) {
+	var out bytes.Buffer
+	v := &roomView{
+		Room: &Room{Phase: PhaseResults, Topic: "Cities"},
+		Review: []reviewView{{
+			Prompt: "Which city is older?",
+			Answer: "Lisbon",
+			Fact:   "Lisbon was founded around 1200 BC.",
+			Source: "offline fixture",
+		}},
+	}
+	if err := panelTmpl.ExecuteTemplate(&out, "panel", v); err != nil {
+		t.Fatal(err)
+	}
+	html := out.String()
+	for _, want := range []string{
+		`class="receipt-printer"`,
+		`class="printer-slot"`,
+		`class="receipt-paper"`,
+		"RECEIPT · Cities",
+		"Lisbon was founded around 1200 BC.",
+		"every line above has a source",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("rendered results are missing %q", want)
+		}
+	}
+}
