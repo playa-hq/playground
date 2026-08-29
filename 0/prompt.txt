@@ -1,0 +1,7 @@
+<task-notification>
+<task-id>blhxze70i</task-id>
+<tool-use-id>toolu_01LeNeRu7QStWqNaD33SnRVc</tool-use-id>
+<output-file>/tmp/claude-1000/-home-joe-workspace-playa/0f08d663-1797-49a2-9de8-f4c0053ec324/tasks/blhxze70i.output</output-file>
+<status>completed</status>
+<summary>Background command "Fresh Entire device auth" completed (exit code 0)</summary>
+</task-notification>
