@@ -15,10 +15,18 @@
     {{range $i, $ch := .Letters}}<span class="ltr" style="--i:{{$i}}">{{$ch}}</span>{{end}}
   </h1>
   <div class="sparkles" aria-hidden="true"></div>
+  <p class="hero-line">2–4 players · dice decide · answers with receipts</p>
   <form method="get" action="/play" class="play-strip">
     <button class="primary big magnet"><span>Play</span></button>
   </form>
+  <form method="post" action="/join" class="join-line" aria-label="Join with a code">
+    <span class="muted small">Have a code?</span>
+    <input type="text" class="code small-code" name="code" maxlength="4" placeholder="CODE"
+           autocomplete="off" required pattern="[A-Za-z0-9]{4}" aria-label="Room code">
+    <button class="ghost small">Join</button>
+  </form>
 </section>
+<p class="footer home-foot">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>
 <script src="/home.js"></script>
 {{end}}
 

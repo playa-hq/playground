@@ -9,6 +9,7 @@
 
 {{with .Error}}<div class="banner danger">{{.}}</div>{{end}}
 
+<div class="column">
 <section class="hero lobby-hero">
   <span class="eyebrow">Lobby</span>
   <h1 class="hero-title">Start a table or <em>join one</em>.</h1>
@@ -52,6 +53,8 @@
   <div class="card" id="leaderboard" hx-get="/leaderboard" hx-trigger="every 10s" hx-target="this" hx-swap="innerMorph">
     {{template "leaderboard" .}}
   </div>
+</div>
+
 </div>
 
 <p class="footer">DATA BY CALA · IMAGES &amp; SOUND BY FAL.AI</p>

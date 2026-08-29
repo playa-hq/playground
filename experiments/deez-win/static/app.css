@@ -488,3 +488,39 @@ button.small, .btn.small { padding: 8px 12px; font-size: 12px; }
 .big-cover { max-width: 300px; margin: 14px auto; }
 @keyframes pop { from { opacity: 0; transform: scale(.6) rotate(-6deg); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cover, .pop { animation: none; } }
+
+/* ---- one composition for home and lobby --------------------------------- */
+/* Both pages are a single centered column with the same width and rhythm:
+ * the home is that column with the wordmark filling the viewport, the lobby
+ * is the same column with cards. Nothing hugs the left edge. */
+
+.column { max-width: 760px; margin: 0 auto; }
+.column > * + * { margin-top: 40px; }
+
+/* Home: the hero owns the viewport; the top bar floats over it. */
+.home-top { position: absolute; left: 20px; right: 20px; top: 24px; margin: 0; z-index: 5; }
+.hero-big {
+  min-height: calc(100vh - 48px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10vh 0 8vh; gap: 0;
+}
+.hero-big .hero-line { margin: clamp(18px, 3vh, 28px) 0 0; }
+.hero-big .play-strip { margin-top: clamp(26px, 4vh, 40px); }
+.join-line {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin-top: clamp(22px, 3vh, 34px); animation: enter .6s 1s both;
+}
+.join-line input.code { width: 132px; padding: 9px 10px; font-size: 13px; letter-spacing: 3px; }
+.home-foot { position: absolute; left: 0; right: 0; bottom: 18px; margin: 0; }
+#app:has(.hero-big) { min-height: 100vh; padding-bottom: 0; }
+
+/* Lobby: centered heading, same column, room to breathe. */
+.lobby-hero { max-width: none; text-align: center; margin: 24px 0 0; }
+.lobby-hero .hero-title { margin-bottom: 0; }
+.column > .lobby-actions { margin-top: 36px; }
+.lobby-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.column > .lobby-grid { margin-top: 32px; }
+.lobby-grid { gap: 24px; }
+.lobby-actions .card, .lobby-grid .card { padding: 24px; }
+@media (max-width: 640px) { .lobby-actions { grid-template-columns: 1fr; } }
+.topbar { margin-bottom: 8px; }
