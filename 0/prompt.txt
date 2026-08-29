@@ -1,0 +1,5 @@
+lets try it out locally.
+for the commits, make sure to use entire.
+architecture side: I'd like you to use htmx 4.0 and make things fully server rendered /  go backend
+https://four.htmx.org/announcements/2026-08-28-htmx-4.0.0-is-released
+(would that be too hard for you to handle?)
